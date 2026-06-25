@@ -3,12 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Analyse IA vs Humain</title>
+<title>Analyse IA vs Humain</title>
 
-<!-- XLSX -->
+<!-- ✅ Scripts corrigés -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -19,15 +17,13 @@ body {
   text-align: center;
   padding: 20px;
 }
-
 .card {
   background: #1e293b;
   padding: 20px;
   border-radius: 12px;
-  margin: 10px auto;
+  margin: 15px auto;
   max-width: 900px;
 }
-
 button {
   background: #3b82f6;
   border: none;
@@ -37,14 +33,7 @@ button {
   border-radius: 8px;
   cursor: pointer;
 }
-
-button:hover { background: #2563eb; }
-
-.metric {
-  font-size: 20px;
-  margin: 10px;
-}
-
+.metric { font-size: 20px; margin: 10px; }
 .good { color: #22c55e; }
 .bad { color: #ef4444; }
 .mid { color: #f59e0b; }
@@ -53,15 +42,15 @@ button:hover { background: #2563eb; }
 
 <body>
 
-<h1>🧠 Analyse IA vs Humain</h1>
+<h1>🧠 Dashboard IA vs Humain</h1>
 
 <div class="card">
   <input type="file" id="fileInput">
   <br><br>
-  <input type="text" id="sheetURL" placeholder="Lien Google Sheet CSV">
-  <button onclick="loadSheet()">Charger Google Sheet</button>
+  <input type="text" id="sheetURL" placeholder="Lien Google Sheet (CSV)">
+  <button onclick="loadSheet()">Charger</button>
   <br><br>
-  <button onclick="analyser()">🚀 Lancer Analyse</button>
+  <button onclick="analyser()">🚀 Lancer analyse</button>
 </div>
 
 <div class="card" id="metrics"></div>
@@ -77,60 +66,82 @@ button:hover { background: #2563eb; }
 <script>
 
 let data = [];
+let chart1 = null;
+let chart2 = null;
 
-document.getElementById("fileInput").addEventListener("change", handleFile);
-
-function handleFile(e) {
+/* ✅ Lecture fichier */
+document.getElementById("fileInput").addEventListener("change", e => {
   const file = e.target.files[0];
   const reader = new FileReader();
 
-  reader.onload = function(evt) {
-    const workbook = XLSX.read(evt.target.result, {type: "binary"});
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  reader.onload = evt => {
+    const wb = XLSX.read(evt.target.result, { type: "binary" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
     data = XLSX.utils.sheet_to_json(sheet);
+    console.log(data);
     alert("✅ Fichier chargé !");
   };
-  reader.readAsBinaryString(file);
-}
 
+  reader.readAsBinaryString(file);
+});
+
+/* ✅ Google Sheet */
 function loadSheet() {
   const url = document.getElementById("sheetURL").value;
 
   fetch(url)
     .then(res => res.text())
     .then(csv => {
-      const workbook = XLSX.read(csv, {type:"string"});
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const wb = XLSX.read(csv, { type: "string" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
       data = XLSX.utils.sheet_to_json(sheet);
-      alert("✅ Google Sheet chargé !");
+      console.log(data);
+      alert("✅ Sheet chargé !");
     });
 }
 
+/* ✅ util colonne robuste */
+function get(row, keys) {
+  for (let k of keys) {
+    if (row[k] !== undefined) return row[k];
+  }
+  return null;
+}
+
+/* ✅ analyse */
 function analyser() {
+
+  if (!data || data.length === 0) {
+    alert("⚠️ charge un fichier d'abord !");
+    return;
+  }
 
   let correct = 0;
   let total = data.length;
-
   let confInit = [];
   let confFinal = [];
   let changed = 0;
 
   data.forEach(row => {
 
-    if(row["Type Réél"] && row["Jugement d'a"]) {
-      if(row["Type Réél"] == row["Jugement d'a"]) correct++;
-    }
+    const vrai = get(row, ["Type Réél","Type Reel","Type"]);
+    const jugement = get(row, ["Jugement d'a","Jugement","Decision"]);
+    const premier = get(row, ["Premier Avis"]);
+    const ci = get(row, ["Confiance Initiale"]);
+    const cf = get(row, ["Confiance Finale"]);
 
-    if(row["Confiance Initiale"]) confInit.push(row["Confiance Initiale"]);
-    if(row["Confiance Finale"]) confFinal.push(row["Confiance Finale"]);
+    if (vrai && jugement && vrai == jugement) correct++;
 
-    if(row["Premier Avis"] != row["Jugement d'a"]) changed++;
+    if (ci != null) confInit.push(Number(ci));
+    if (cf != null) confFinal.push(Number(cf));
+
+    if (premier && jugement && premier != jugement) changed++;
   });
 
-  let acc = (correct / total * 100).toFixed(1);
-  let meanInit = avg(confInit);
-  let meanFinal = avg(confFinal);
-  let changeRate = (changed / total * 100).toFixed(1);
+  const acc = (correct / total * 100).toFixed(1);
+  const meanInit = avg(confInit);
+  const meanFinal = avg(confFinal);
+  const changeRate = (changed / total * 100).toFixed(1);
 
   document.getElementById("metrics").innerHTML = `
     <div class="metric good">✅ Accuracy : ${acc}%</div>
@@ -142,13 +153,19 @@ function analyser() {
   drawCharts(confInit, confFinal);
 }
 
+/* ✅ moyenne */
 function avg(arr) {
+  if (arr.length === 0) return 0;
   return (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
 }
 
+/* ✅ charts corrigés */
 function drawCharts(init, fin) {
 
-  new Chart(document.getElementById("chart1"), {
+  if (chart1) chart1.destroy();
+  if (chart2) chart2.destroy();
+
+  chart1 = new Chart(document.getElementById("chart1"), {
     type: "line",
     data: {
       labels: init.map((_,i)=>i),
@@ -167,12 +184,12 @@ function drawCharts(init, fin) {
     }
   });
 
-  new Chart(document.getElementById("chart2"), {
+  chart2 = new Chart(document.getElementById("chart2"), {
     type: "bar",
     data: {
       labels: ["Initiale", "Finale"],
       datasets: [{
-        label: "Moyennes",
+        label: "Moyenne",
         data: [avg(init), avg(fin)],
         backgroundColor: ["#f59e0b","#22c55e"]
       }]
