@@ -1,78 +1,186 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Analyseur IA vs Humain</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Analyse IA vs Humain</title>
 
-  <!-- React -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<!-- XLSX -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  <!-- Babel pour JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      padding: 40px;
-    }
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
 
-    .card {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 500px;
-      margin: auto;
-    }
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 10px auto;
+  max-width: 900px;
+}
 
-    button {
-      background: #3b82f6;
-      border: none;
-      padding: 10px 20px;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
+button {
+  background: #3b82f6;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
 
-    button:hover {
-      background: #2563eb;
-    }
-  </style>
+button:hover { background: #2563eb; }
+
+.metric {
+  font-size: 20px;
+  margin: 10px;
+}
+
+.good { color: #22c55e; }
+.bad { color: #ef4444; }
+.mid { color: #f59e0b; }
+</style>
 </head>
 
 <body>
-  <div id="root"></div>
 
-  <script type="text/babel">
-    function App() {
-      const [score, setScore] = React.useState(0);
+<h1>🧠 Analyse IA vs Humain</h1>
 
-      return (
-        <div className="card">
-          <h1>🧠 IA vs Humain</h1>
-          <p>Prototype simple (GitHub Pages)</p>
+<div class="card">
+  <input type="file" id="fileInput">
+  <br><br>
+  <input type="text" id="sheetURL" placeholder="Lien Google Sheet CSV">
+  <button onclick="loadSheet()">Charger Google Sheet</button>
+  <br><br>
+  <button onclick="analyser()">🚀 Lancer Analyse</button>
+</div>
 
-          <h2>Score : {score}</h2>
+<div class="card" id="metrics"></div>
 
-          <button onClick={() => setScore(score + 1)}>
-            ➕ Augmenter
-          </button>
+<div class="card">
+  <canvas id="chart1"></canvas>
+</div>
 
-          <p style={{marginTop: "20px"}}>
-            Ici tu peux brancher ton analyseur d’images ou ton scoring PFIA
-          </p>
-        </div>
-      );
+<div class="card">
+  <canvas id="chart2"></canvas>
+</div>
+
+<script>
+
+let data = [];
+
+document.getElementById("fileInput").addEventListener("change", handleFile);
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(evt) {
+    const workbook = XLSX.read(evt.target.result, {type: "binary"});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    data = XLSX.utils.sheet_to_json(sheet);
+    alert("✅ Fichier chargé !");
+  };
+  reader.readAsBinaryString(file);
+}
+
+function loadSheet() {
+  const url = document.getElementById("sheetURL").value;
+
+  fetch(url)
+    .then(res => res.text())
+    .then(csv => {
+      const workbook = XLSX.read(csv, {type:"string"});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      data = XLSX.utils.sheet_to_json(sheet);
+      alert("✅ Google Sheet chargé !");
+    });
+}
+
+function analyser() {
+
+  let correct = 0;
+  let total = data.length;
+
+  let confInit = [];
+  let confFinal = [];
+  let changed = 0;
+
+  data.forEach(row => {
+
+    if(row["Type Réél"] && row["Jugement d'a"]) {
+      if(row["Type Réél"] == row["Jugement d'a"]) correct++;
     }
 
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<App />);
-  </script>
+    if(row["Confiance Initiale"]) confInit.push(row["Confiance Initiale"]);
+    if(row["Confiance Finale"]) confFinal.push(row["Confiance Finale"]);
+
+    if(row["Premier Avis"] != row["Jugement d'a"]) changed++;
+  });
+
+  let acc = (correct / total * 100).toFixed(1);
+  let meanInit = avg(confInit);
+  let meanFinal = avg(confFinal);
+  let changeRate = (changed / total * 100).toFixed(1);
+
+  document.getElementById("metrics").innerHTML = `
+    <div class="metric good">✅ Accuracy : ${acc}%</div>
+    <div class="metric mid">📊 Confiance initiale : ${meanInit}</div>
+    <div class="metric good">📈 Confiance finale : ${meanFinal}</div>
+    <div class="metric bad">🔄 Changement d'avis : ${changeRate}%</div>
+  `;
+
+  drawCharts(confInit, confFinal);
+}
+
+function avg(arr) {
+  return (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
+}
+
+function drawCharts(init, fin) {
+
+  new Chart(document.getElementById("chart1"), {
+    type: "line",
+    data: {
+      labels: init.map((_,i)=>i),
+      datasets: [
+        {
+          label: "Confiance initiale",
+          data: init,
+          borderColor: "#f59e0b"
+        },
+        {
+          label: "Confiance finale",
+          data: fin,
+          borderColor: "#22c55e"
+        }
+      ]
+    }
+  });
+
+  new Chart(document.getElementById("chart2"), {
+    type: "bar",
+    data: {
+      labels: ["Initiale", "Finale"],
+      datasets: [{
+        label: "Moyennes",
+        data: [avg(init), avg(fin)],
+        backgroundColor: ["#f59e0b","#22c55e"]
+      }]
+    }
+  });
+}
+
+</script>
 
 </body>
 </html>
