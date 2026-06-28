@@ -1,203 +1,1945 @@
 <!doctype html>
 <html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Analyse IA vs Humain</title>
-
-<!-- ✅ Scripts corrigés -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body {
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
-  text-align: center;
-  padding: 20px;
-}
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 12px;
-  margin: 15px auto;
-  max-width: 900px;
-}
-button {
-  background: #3b82f6;
-  border: none;
-  padding: 10px 15px;
-  margin: 5px;
-  color: white;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.metric { font-size: 20px; margin: 10px; }
-.good { color: #22c55e; }
-.bad { color: #ef4444; }
-.mid { color: #f59e0b; }
-</style>
-</head>
-
-<body>
-
-<h1>🧠 Dashboard IA vs Humain</h1>
-
-<div class="card">
-  <input type="file" id="fileInput">
-  <br><br>
-  <input type="text" id="sheetURL" placeholder="Lien Google Sheet (CSV)">
-  <button onclick="loadSheet()">Charger</button>
-  <br><br>
-  <button onclick="analyser()">🚀 Lancer analyse</button>
-</div>
-
-<div class="card" id="metrics"></div>
-
-<div class="card">
-  <canvas id="chart1"></canvas>
-</div>
-
-<div class="card">
-  <canvas id="chart2"></canvas>
-</div>
-
-<script>
-
-let data = [];
-let chart1 = null;
-let chart2 = null;
-
-/* ✅ Lecture fichier */
-document.getElementById("fileInput").addEventListener("change", e => {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-
-  reader.onload = evt => {
-    const wb = XLSX.read(evt.target.result, { type: "binary" });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    data = XLSX.utils.sheet_to_json(sheet);
-    console.log(data);
-    alert("✅ Fichier chargé !");
-  };
-
-  reader.readAsBinaryString(file);
-});
-
-/* ✅ Google Sheet */
-function loadSheet() {
-  const url = document.getElementById("sheetURL").value;
-
-  fetch(url)
-    .then(res => res.text())
-    .then(csv => {
-      const wb = XLSX.read(csv, { type: "string" });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      data = XLSX.utils.sheet_to_json(sheet);
-      console.log(data);
-      alert("✅ Sheet chargé !");
-    });
-}
-
-/* ✅ util colonne robuste */
-function get(row, keys) {
-  for (let k of keys) {
-    if (row[k] !== undefined) return row[k];
-  }
-  return null;
-}
-
-/* ✅ analyse */
-function analyser() {
-
-  if (!data || data.length === 0) {
-    alert("⚠️ charge un fichier d'abord !");
-    return;
-  }
-
-  let correct = 0;
-  let total = data.length;
-  let confInit = [];
-  let confFinal = [];
-  let changed = 0;
-
-  data.forEach(row => {
-
-    const vrai = get(row, ["Type Réél","Type Reel","Type"]);
-    const jugement = get(row, ["Jugement d'a","Jugement","Decision"]);
-    const premier = get(row, ["Premier Avis"]);
-    const ci = get(row, ["Confiance Initiale"]);
-    const cf = get(row, ["Confiance Finale"]);
-
-    if (vrai && jugement && vrai == jugement) correct++;
-
-    if (ci != null) confInit.push(Number(ci));
-    if (cf != null) confFinal.push(Number(cf));
-
-    if (premier && jugement && premier != jugement) changed++;
-  });
-
-  const acc = (correct / total * 100).toFixed(1);
-  const meanInit = avg(confInit);
-  const meanFinal = avg(confFinal);
-  const changeRate = (changed / total * 100).toFixed(1);
-
-  document.getElementById("metrics").innerHTML = `
-    <div class="metric good">✅ Accuracy : ${acc}%</div>
-    <div class="metric mid">📊 Confiance initiale : ${meanInit}</div>
-    <div class="metric good">📈 Confiance finale : ${meanFinal}</div>
-    <div class="metric bad">🔄 Changement d'avis : ${changeRate}%</div>
-  `;
-
-  drawCharts(confInit, confFinal);
-}
-
-/* ✅ moyenne */
-function avg(arr) {
-  if (arr.length === 0) return 0;
-  return (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
-}
-
-/* ✅ charts corrigés */
-function drawCharts(init, fin) {
-
-  if (chart1) chart1.destroy();
-  if (chart2) chart2.destroy();
-
-  chart1 = new Chart(document.getElementById("chart1"), {
-    type: "line",
-    data: {
-      labels: init.map((_,i)=>i),
-      datasets: [
-        {
-          label: "Confiance initiale",
-          data: init,
-          borderColor: "#f59e0b"
-        },
-        {
-          label: "Confiance finale",
-          data: fin,
-          borderColor: "#22c55e"
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analyseur de Confiance Métacognitive</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS CDN (XLSX parsing) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+              mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
+            },
+            colors: {
+              indigo: {
+                650: '#4338ca',
+              },
+            }
+          }
         }
-      ]
-    }
-  });
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8fafc;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-800 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      
+      <!-- Main Application Header -->
+      <header id="app-header" class="mb-10 text-center sm:text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200">
+        <div>
+          <div class="flex items-center justify-center sm:justify-start gap-3 mb-2">
+            <span class="px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-md">
+              Sciences Cognitives
+            </span>
+            <span class="text-xs text-slate-400 font-bold font-mono">v1.3.0</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight uppercase">
+            Analyseur de <span class="text-indigo-650">Confiance Métacognitive</span>
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            Évaluez l'écart de calibrage entre la performance réelle et le sentiment de certitude.
+          </p>
+        </div>
+        <div class="flex items-center justify-center sm:justify-end gap-2.5">
+          <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg text-emerald-850 font-bold text-xs shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Prêt pour analyse
+          </div>
+        </div>
+      </header>
 
-  chart2 = new Chart(document.getElementById("chart2"), {
-    type: "bar",
-    data: {
-      labels: ["Initiale", "Finale"],
-      datasets: [{
-        label: "Moyenne",
-        data: [avg(init), avg(fin)],
-        backgroundColor: ["#f59e0b","#22c55e"]
-      }]
-    }
-  });
-}
+      <!-- Sync Loading Notice -->
+      <div id="sync-notice" class="hidden mb-6 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <i data-lucide="refresh-cw" class="w-5 h-5 animate-spin text-indigo-600"></i>
+          <p class="text-sm font-bold">Tentative de synchronisation en direct avec votre Google Sheet...</p>
+        </div>
+      </div>
 
-</script>
+      <!-- General Status Banner (Success/Error) -->
+      <div id="status-banner" class="hidden mb-6 p-4 rounded-lg flex items-start gap-3">
+        <div class="shrink-0 mt-0.5" id="status-icon-container"></div>
+        <div>
+          <p class="text-sm font-black uppercase tracking-wider" id="status-title"></p>
+          <p class="text-xs mt-0.5 leading-relaxed font-semibold" id="status-message"></p>
+        </div>
+      </div>
 
-</body>
+      <!-- IMPORTER SECTION -->
+      <section id="importer-section" class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+        
+        <!-- Google Sheets Card -->
+        <div class="lg:col-span-7 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="p-2.5 bg-indigo-50 border border-indigo-100 text-indigo-650 rounded">
+                <i data-lucide="link-2" class="w-5 h-5 text-indigo-600"></i>
+              </div>
+              <div>
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Importer via Google Sheets</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Idéal pour lier des formulaires ou des feuilles partagées en temps réel.</p>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div>
+                <label for="sheet-url-input" class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                  Lien de la feuille Google Sheet (Partage public activé)
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    id="sheet-url-input"
+                    type="text"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value="https://docs.google.com/spreadsheets/d/1ngFfJErFMB9mSEvRec5cvFguF8iCaEe_dXWhOCBGHtU/edit?gid=1377178359#gid=1377178359"
+                    class="flex-1 px-3.5 py-2.5 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium"
+                  />
+                  <button
+                    id="btn-load-sheet"
+                    type="button"
+                    class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-extrabold text-xs uppercase tracking-wider rounded transition shadow-sm flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                  >
+                    <span id="sheet-loader" class="hidden w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span id="sheet-btn-text">Charger</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+                <div class="flex gap-2.5 text-xs text-slate-600">
+                  <i data-lucide="help-circle" class="w-4 h-4 text-indigo-650 shrink-0 mt-0.5"></i>
+                  <div class="space-y-1">
+                    <p class="font-bold text-slate-700">Comment préparer votre Google Sheet :</p>
+                    <ul class="list-disc pl-4 space-y-1 text-slate-500 font-medium text-[11px]">
+                      <li>Allez sur Google Sheet, cliquez sur <strong>Partager</strong> en haut à droite.</li>
+                      <li>Modifiez l'accès général à : <strong>"Tous les utilisateurs disposant du lien"</strong> (Lecteur).</li>
+                      <li>Collez l'URL complète dans le champ ci-dessus pour charger l'analyse.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="sheet-status-msg" class="mt-4"></div>
+        </div>
+
+        <!-- Local Upload & Demo Data Card -->
+        <div class="lg:col-span-5 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="p-2.5 bg-blue-50 border border-blue-100 text-blue-650 rounded">
+                <i data-lucide="upload-cloud" class="w-5 h-5 text-blue-600"></i>
+              </div>
+              <div>
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Glisser-déposer / Démo</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Uploadez un fichier XLSX, XLS, CSV ou chargez une simulation.</p>
+              </div>
+            </div>
+
+            <!-- Drag & Drop Area -->
+            <div
+              id="drop-zone"
+              class="cursor-pointer border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 rounded-lg p-5 text-center transition flex flex-col items-center justify-center min-h-[140px]"
+            >
+              <input
+                id="file-input"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                class="hidden"
+              />
+              <i data-lucide="file-spreadsheet" class="w-7 h-7 text-slate-400 mb-2"></i>
+              <p class="text-xs font-bold text-slate-700 leading-normal">
+                Déposez votre fichier ici, ou <span class="text-indigo-600 hover:underline">cliquez pour parcourir</span>
+              </p>
+              <p class="text-[10px] font-semibold text-slate-400 mt-1">Formats : .xlsx, .xls, .csv</p>
+            </div>
+          </div>
+
+          <!-- Demo buttons -->
+          <div class="mt-4 pt-4 border-t border-slate-200">
+            <div class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+              <i data-lucide="database" class="w-3.5 h-3.5 text-slate-500"></i>
+              Tester avec des données de démo :
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onclick="loadDemoData(1)"
+                class="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded transition text-left leading-tight cursor-pointer"
+              >
+                <strong>Quiz Décisionnel (100%)</strong>
+                <div class="text-[10px] text-slate-500 font-medium mt-0.5">25 essais, échelle 100%</div>
+              </button>
+              <button
+                type="button"
+                onclick="loadDemoData(2)"
+                class="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded transition text-left leading-tight cursor-pointer"
+              >
+                <strong>Perception Visuelle (1-5)</strong>
+                <div class="text-[10px] text-slate-500 font-medium mt-0.5">15 essais, échelle 1 à 5</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN MAPPER SECTION -->
+      <section id="mapper-section" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-50 border border-indigo-100 text-indigo-650 rounded">
+              <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Configuration des Colonnes</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Source : <span id="mapper-source-name" class="font-bold text-indigo-600">Fichier</span>. Associez vos colonnes pour l'analyse.</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded">
+            <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+            <span class="font-semibold">Vérifiez que les types correspondent pour des calculs fiables.</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          <!-- Dropdowns left column -->
+          <div class="lg:col-span-5 space-y-4">
+            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+              <i data-lucide="list-filter" class="w-4 h-4 text-indigo-600"></i>
+              Mappage des champs requis :
+            </h3>
+
+            <div class="space-y-4" id="mapping-dropdowns-container">
+              <!-- Dynamically populated fields -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Index / Numéro d'essai <span class="text-rose-500">*</span>
+                </label>
+                <select id="map-id" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
+                  <option value="">-- Choisir une colonne --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Réussite Initiale (Correct / Non Correct) <span class="text-rose-500">*</span>
+                </label>
+                <select id="map-correct" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
+                  <option value="">-- Choisir une colonne --</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-medium mt-0.5">Valeurs comprises : 1, true, oui, yes, vrai.</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Confiance Initiale <span class="text-rose-500">*</span>
+                </label>
+                <select id="map-init-conf" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
+                  <option value="">-- Choisir une colonne --</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-medium mt-0.5">Valeurs numériques attendues (ex: 0 à 100, ou 1 à 5).</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Changement d'Avis (0 ou 1) <span class="text-rose-500">*</span>
+                </label>
+                <select id="map-change" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
+                  <option value="">-- Choisir une colonne --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Confiance Finale <span class="text-rose-500">*</span>
+                </label>
+                <select id="map-final-conf" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
+                  <option value="">-- Choisir une colonne --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Réussite Finale (Optionnel)
+                </label>
+                <select id="map-final-correct" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
+                  <option value="">-- Déduire automatiquement du changement d'avis --</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-medium mt-0.5">Si vide, déduit automatiquement à l'aide du changement d'avis.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview & Action Right Column -->
+          <div class="lg:col-span-7 flex flex-col justify-between">
+            <div>
+              <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5">
+                <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i>
+                Aperçu de la conversion (3 premières lignes) :
+              </h3>
+
+              <div class="overflow-x-auto border border-slate-250 rounded-lg mb-4 bg-slate-50">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-100 text-slate-700 border-b border-slate-250 font-black uppercase tracking-wider text-[10px]">
+                      <th class="p-2.5">ID</th>
+                      <th class="p-2.5">Correct Initial</th>
+                      <th class="p-2.5">Conf. Initiale</th>
+                      <th class="p-2.5">Changement</th>
+                      <th class="p-2.5">Conf. Finale</th>
+                      <th class="p-2.5">Correct Final</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mapper-preview-rows" class="divide-y divide-slate-200">
+                    <!-- Dynamic preview rows -->
+                    <tr>
+                      <td colSpan="6" class="p-6 text-center text-slate-400 font-medium">
+                        Veuillez lier au moins les champs requis (*) pour générer un aperçu.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 space-y-1">
+                <p class="font-bold text-slate-700 flex items-center gap-1.5">
+                  <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-indigo-600"></i>
+                  Règles de conversion automatique :
+                </p>
+                <ul class="list-disc pl-4 space-y-0.5 text-[11px] text-slate-500 font-medium">
+                  <li>Les confiances sont ramenées aux échelles détectées (ex: 0 à 100%, ou 1 à 5).</li>
+                  <li>Le changement d'avis est considéré vrai si la cellule contient un chiffre différent de 0, "true", "oui", "change", ou "vrai".</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+              <button
+                id="btn-apply-mapping"
+                type="button"
+                class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-extrabold text-xs uppercase tracking-wider rounded transition shadow-sm hover:shadow flex items-center gap-2 cursor-pointer"
+              >
+                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                Lancer l'Analyse Métacognitive
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ACTIVE SOURCE TITLE BAR -->
+      <section id="active-source-bar" class="hidden mb-8 p-4 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-indigo-50 border border-indigo-100 text-indigo-650 rounded">
+            <i data-lucide="brain" class="w-5 h-5 text-indigo-650"></i>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Source Active</div>
+            <div class="text-sm font-black text-slate-800 flex items-center gap-1.5 mt-0.5">
+              <span id="active-source-title">-</span>
+              <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2.5 py-0.5 rounded uppercase tracking-wider">
+                Opérationnel
+              </span>
+            </div>
+          </div>
+        </div>
+        <button
+          id="btn-clear-data"
+          type="button"
+          class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-250 text-xs font-black uppercase tracking-wider rounded transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          Changer de source
+        </button>
+      </section>
+
+      <!-- METRIC DASHBOARD GRID -->
+      <section id="dashboard-section" class="hidden space-y-8">
+        
+        <!-- Qualitative Profile Verdict Card -->
+        <div id="verdict-card" class="bg-slate-900 text-white rounded-xl shadow-md border border-slate-800 p-6 sm:p-8">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-slate-800 text-indigo-400 rounded-lg">
+                <i data-lucide="award" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Diagnostic Métacognitif</h3>
+                <h2 id="verdict-title" class="text-lg sm:text-xl font-black text-white mt-0.5">Calcul en cours...</h2>
+              </div>
+            </div>
+            <div class="self-start sm:self-auto">
+              <span id="verdict-badge" class="px-3 py-1 text-xs font-extrabold uppercase tracking-wider rounded border">
+                Normal
+              </span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div class="md:col-span-8 space-y-4">
+              <p id="verdict-desc" class="text-slate-300 text-sm leading-relaxed font-semibold">
+                -
+              </p>
+              
+              <div class="space-y-2">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Analyses Clés :</p>
+                <ul id="verdict-points" class="space-y-2 text-xs text-slate-300">
+                  <!-- JS injected bullet points -->
+                </ul>
+              </div>
+            </div>
+
+            <div class="md:col-span-4 bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
+              <div class="flex gap-2.5 items-start">
+                <i data-lucide="lightbulb" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse"></i>
+                <div class="space-y-1">
+                  <p class="text-xs font-black uppercase tracking-widest text-amber-400">Pédagogie</p>
+                  <p id="verdict-recommendation" class="text-xs text-slate-300 leading-relaxed font-semibold">
+                    -
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 Metric Cards Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          
+          <!-- Card 1: Initial Accuracy -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Exactitude Initiale</span>
+                <span class="p-1 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded">
+                  <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
+              <div id="metric-initial-accuracy" class="text-2xl font-black text-slate-800 font-mono">0%</div>
+            </div>
+            <div class="text-[10px] text-slate-500 font-medium mt-3">
+              Taux de réussite lors de la première réponse.
+            </div>
+          </div>
+
+          <!-- Card 2: Final Accuracy -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Exactitude Finale</span>
+                <span class="p-1 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded">
+                  <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <div id="metric-final-accuracy" class="text-2xl font-black text-slate-800 font-mono">0%</div>
+                <span id="metric-accuracy-diff" class="text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                  +0%
+                </span>
+              </div>
+            </div>
+            <div class="text-[10px] text-slate-500 font-medium mt-3">
+              Taux de réussite après réévaluation / changement.
+            </div>
+          </div>
+
+          <!-- Card 3: Initial Confidence -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Confiance Initiale</span>
+                <span class="p-1 bg-amber-50 border border-amber-100 text-amber-600 rounded">
+                  <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
+              <div id="metric-initial-confidence" class="text-2xl font-black text-slate-800 font-mono">0.0</div>
+            </div>
+            <div class="text-[10px] text-slate-500 font-medium mt-3">
+              Degré de certitude moyen sur l'essai de départ.
+            </div>
+          </div>
+
+          <!-- Card 4: Final Confidence -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Confiance Finale</span>
+                <span class="p-1 bg-teal-50 border border-teal-100 text-teal-600 rounded">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <div id="metric-final-confidence" class="text-2xl font-black text-slate-800 font-mono">0.0</div>
+                <span id="metric-confidence-diff" class="text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                  +0
+                </span>
+              </div>
+            </div>
+            <div class="text-[10px] text-slate-500 font-medium mt-3">
+              Degré de certitude moyen après réflexion finale.
+            </div>
+          </div>
+
+          <!-- Card 5: Change of Mind -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Changements d'Avis</span>
+                <span class="p-1 bg-purple-50 border border-purple-100 text-purple-650 rounded">
+                  <i data-lucide="git-compare" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
+              <div id="metric-change-rate" class="text-2xl font-black text-slate-800 font-mono">0%</div>
+            </div>
+            <div class="text-[10px] text-slate-500 font-medium mt-3">
+              Pourcentage d'essais où la réponse a été modifiée.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- VISUALIZATIONS SECTION (TABS + CHARTS) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-6">
+            <div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Visualisations Dynamiques</h3>
+              <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest mt-0.5">Analyses Graphiques</h2>
+            </div>
+            
+            <!-- Tab switches -->
+            <div class="flex border border-slate-200 rounded p-1 bg-slate-50/50 self-start sm:self-auto text-xs font-bold">
+              <button
+                type="button"
+                onclick="switchTab('evolution')"
+                id="tab-btn-evolution"
+                class="tab-btn px-3 py-1.5 rounded transition cursor-pointer text-slate-600 hover:text-slate-950"
+              >
+                Confiance d'Essai en Essai
+              </button>
+              <button
+                type="button"
+                onclick="switchTab('change')"
+                id="tab-btn-change"
+                class="tab-btn px-3 py-1.5 rounded transition cursor-pointer text-slate-600 hover:text-slate-950"
+              >
+                Efficacité du Changement
+              </button>
+              <button
+                type="button"
+                onclick="switchTab('calibration')"
+                id="tab-btn-calibration"
+                class="tab-btn px-3 py-1.5 rounded transition cursor-pointer text-slate-600 hover:text-slate-950"
+              >
+                Calibrage Métacognitif
+              </button>
+            </div>
+          </div>
+
+          <!-- Chart Area -->
+          <div class="w-full relative min-h-[300px] flex items-center justify-center">
+            <canvas id="dashboard-chart" class="w-full max-h-[360px]"></canvas>
+          </div>
+        </div>
+
+        <!-- DETAILED TRIALS REGISTRY TABLE -->
+        <div id="trials-table-panel" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-6">
+            <div>
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-4 bg-indigo-600 rounded-sm"></div>
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Registre Détaillé des Essais</h2>
+              </div>
+              <p class="text-xs text-slate-500 mt-1">Explorez, triez, filtrez et inspectez chaque mesure individuelle.</p>
+            </div>
+
+            <!-- Reset filters link -->
+            <button
+              type="button"
+              onclick="resetTableFilters()"
+              class="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1 self-start xl:self-auto cursor-pointer"
+            >
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              Réinitialiser les filtres
+            </button>
+          </div>
+
+          <!-- Filters Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+            <!-- Search -->
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+              </span>
+              <input
+                id="filter-search"
+                type="text"
+                placeholder="Rechercher par libellé..."
+                oninput="onTableFilterChange()"
+                class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium"
+              />
+            </div>
+
+            <!-- Category -->
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="tag" class="w-4 h-4"></i>
+              </span>
+              <select
+                id="filter-category"
+                onchange="onTableFilterChange()"
+                class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition appearance-none font-semibold"
+              >
+                <option value="all">Toutes catégories</option>
+              </select>
+            </div>
+
+            <!-- Success -->
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="award" class="w-4 h-4"></i>
+              </span>
+              <select
+                id="filter-correctness"
+                onchange="onTableFilterChange()"
+                class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition appearance-none font-semibold"
+              >
+                <option value="all">Tous résultats finals</option>
+                <option value="correct">Essais Corrects</option>
+                <option value="incorrect">Essais Incorrects</option>
+              </select>
+            </div>
+
+            <!-- Mind Behavior -->
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="git-branch" class="w-4 h-4"></i>
+              </span>
+              <select
+                id="filter-change"
+                onchange="onTableFilterChange()"
+                class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition appearance-none font-semibold"
+              >
+                <option value="all">Tous comportements</option>
+                <option value="changed">Changements d'avis</option>
+                <option value="kept">Avis stable</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table Area -->
+          <div class="overflow-x-auto border border-slate-200 rounded-lg mb-4 bg-white">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200 font-black uppercase tracking-wider text-[10px]">
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('id')">
+                    <div class="flex items-center gap-1">
+                      ID <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                  <th class="p-3.5">Libellé de la Question / Tâche</th>
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('category')">
+                    <div class="flex items-center gap-1">
+                      Catégorie <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('correct')">
+                    <div class="flex items-center gap-1">
+                      Correct Initial <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('initialConfidence')">
+                    <div class="flex items-center gap-1">
+                      Confiance Initiale <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('changeOfMind')">
+                    <div class="flex items-center gap-1">
+                      Changement <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('finalConfidence')">
+                    <div class="flex items-center gap-1">
+                      Confiance Finale <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                  <th class="p-3.5 cursor-pointer hover:bg-slate-150 transition select-none" onclick="sortTable('finalCorrect')">
+                    <div class="flex items-center gap-1">
+                      Correct Final <i data-lucide="arrow-up-down" class="w-3 h-3 text-indigo-600"></i>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="trials-table-rows" class="divide-y divide-slate-200">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Row -->
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-4 pt-4 border-t border-slate-200">
+            <span class="font-semibold text-slate-600" id="table-pagination-info">
+              Affichage de 0 à 0 sur 0 essais
+            </span>
+
+            <div class="flex gap-2">
+              <button
+                id="btn-prev-page"
+                type="button"
+                onclick="prevTablePage()"
+                class="p-1.5 border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
+              >
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <div id="table-current-page-text" class="flex items-center px-2.5 font-bold text-slate-700">
+                Page 1 sur 1
+              </div>
+              <button
+                id="btn-next-page"
+                type="button"
+                onclick="nextTablePage()"
+                class="p-1.5 border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
+              >
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- CORE LOGIC & PARSING SCRIPT -->
+    <script>
+      // ==========================================
+      // CONSTANTS & MOCK DATA
+      // ==========================================
+      const DEMO_DATA_1 = [
+        { id: 1, correct: true, initialConfidence: 80, changeOfMind: false, finalConfidence: 85, finalCorrect: true, questionText: "Calcul de probabilité simple", category: "Mathématiques" },
+        { id: 2, correct: false, initialConfidence: 60, changeOfMind: true, finalConfidence: 90, finalCorrect: true, questionText: "Capitales mondiales : Ottawa", category: "Géographie" },
+        { id: 3, correct: true, initialConfidence: 95, changeOfMind: false, finalConfidence: 100, finalCorrect: true, questionText: "Identification d'espèce d'arbre", category: "Biologie" },
+        { id: 4, correct: false, initialConfidence: 40, changeOfMind: false, finalConfidence: 35, finalCorrect: false, questionText: "Date historique : Traité de Verdun", category: "Histoire" },
+        { id: 5, correct: false, initialConfidence: 70, changeOfMind: true, finalConfidence: 80, finalCorrect: true, questionText: "Auteur littéraire : Les Misérables", category: "Littérature" },
+        { id: 6, correct: true, initialConfidence: 85, changeOfMind: false, finalConfidence: 90, finalCorrect: true, questionText: "Formule chimique de l'eau", category: "Chimie" },
+        { id: 7, correct: true, initialConfidence: 50, changeOfMind: true, finalConfidence: 20, finalCorrect: false, questionText: "Vitesse de la lumière dans le verre", category: "Physique" },
+        { id: 8, correct: false, initialConfidence: 30, changeOfMind: true, finalConfidence: 75, finalCorrect: true, questionText: "Définition de la synergie", category: "Vocabulaire" },
+        { id: 9, correct: true, initialConfidence: 90, changeOfMind: false, finalConfidence: 95, finalCorrect: true, questionText: "Nombre de planètes du système solaire", category: "Astronomie" },
+        { id: 10, correct: false, initialConfidence: 65, changeOfMind: true, finalConfidence: 85, finalCorrect: true, questionText: "Inventeur de la presse d'imprimerie", category: "Histoire" },
+        { id: 11, correct: true, initialConfidence: 75, changeOfMind: false, finalConfidence: 80, finalCorrect: true, questionText: "Symbole chimique de l'Or", category: "Chimie" },
+        { id: 12, correct: false, initialConfidence: 80, changeOfMind: false, finalConfidence: 80, finalCorrect: false, questionText: "Pays limitrophes de l'Espagne", category: "Géographie" },
+        { id: 13, correct: true, initialConfidence: 45, changeOfMind: true, finalConfidence: 85, finalCorrect: true, questionText: "Calcul mental de fraction", category: "Mathématiques" },
+        { id: 14, correct: false, initialConfidence: 20, changeOfMind: true, finalConfidence: 60, finalCorrect: true, questionText: "Année de la chute du mur de Berlin", category: "Histoire" },
+        { id: 15, correct: true, initialConfidence: 90, changeOfMind: false, finalConfidence: 95, finalCorrect: true, questionText: "Organe principal de la respiration", category: "Biologie" },
+        { id: 16, correct: false, initialConfidence: 55, changeOfMind: true, finalConfidence: 70, finalCorrect: true, questionText: "Créateur de la théorie de la relativité", category: "Physique" },
+        { id: 17, correct: true, initialConfidence: 70, changeOfMind: false, finalConfidence: 70, finalCorrect: true, questionText: "Plus grand océan de la Terre", category: "Géographie" },
+        { id: 18, correct: false, initialConfidence: 90, changeOfMind: false, finalConfidence: 85, finalCorrect: false, questionText: "Nombre de dents d'un adulte", category: "Biologie" },
+        { id: 19, correct: true, initialConfidence: 60, changeOfMind: true, finalConfidence: 40, finalCorrect: false, questionText: "Compositeur de La Flûte Enchantée", category: "Musique" },
+        { id: 20, correct: false, initialConfidence: 35, changeOfMind: true, finalConfidence: 80, finalCorrect: true, questionText: "Définition de l'oxymore", category: "Littérature" },
+        { id: 21, correct: true, initialConfidence: 95, changeOfMind: false, finalConfidence: 95, finalCorrect: true, questionText: "Capitale de la France", category: "Géographie" },
+        { id: 22, correct: false, initialConfidence: 75, changeOfMind: true, finalConfidence: 85, finalCorrect: true, questionText: "Premier homme dans l'espace", category: "Astronomie" },
+        { id: 23, correct: true, initialConfidence: 85, changeOfMind: false, finalConfidence: 90, finalCorrect: true, questionText: "Peintre de la Joconde", category: "Art" },
+        { id: 24, correct: false, initialConfidence: 50, changeOfMind: true, finalConfidence: 75, finalCorrect: true, questionText: "Devise de la monnaie du Japon", category: "Économie" },
+        { id: 25, correct: true, initialConfidence: 100, changeOfMind: false, finalConfidence: 100, finalCorrect: true, questionText: "Température d'ébullition de l'eau (°C)", category: "Physique" }
+      ];
+
+      const DEMO_DATA_2 = [
+        { id: 1, correct: true, initialConfidence: 3, changeOfMind: false, finalConfidence: 4, finalCorrect: true, questionText: "Tâche visuelle - Étape 1", category: "Perception" },
+        { id: 2, correct: false, initialConfidence: 4, changeOfMind: true, finalConfidence: 5, finalCorrect: true, questionText: "Tâche visuelle - Étape 2", category: "Perception" },
+        { id: 3, correct: true, initialConfidence: 5, changeOfMind: false, finalConfidence: 5, finalCorrect: true, questionText: "Tâche visuelle - Étape 3", category: "Perception" },
+        { id: 4, correct: false, initialConfidence: 2, changeOfMind: false, finalConfidence: 2, finalCorrect: false, questionText: "Tâche visuelle - Étape 4", category: "Perception" },
+        { id: 5, correct: false, initialConfidence: 3, changeOfMind: true, finalConfidence: 4, finalCorrect: true, questionText: "Tâche visuelle - Étape 5", category: "Perception" },
+        { id: 6, correct: true, initialConfidence: 4, changeOfMind: false, finalConfidence: 4, finalCorrect: true, questionText: "Tâche visuelle - Étape 6", category: "Perception" },
+        { id: 7, correct: true, initialConfidence: 3, changeOfMind: true, finalConfidence: 1, finalCorrect: false, questionText: "Tâche visuelle - Étape 7", category: "Perception" },
+        { id: 8, correct: false, initialConfidence: 1, changeOfMind: true, finalConfidence: 4, finalCorrect: true, questionText: "Tâche visuelle - Étape 8", category: "Perception" },
+        { id: 9, correct: true, initialConfidence: 5, changeOfMind: false, finalConfidence: 5, finalCorrect: true, questionText: "Tâche visuelle - Étape 9", category: "Perception" },
+        { id: 10, correct: false, initialConfidence: 3, changeOfMind: true, finalConfidence: 5, finalCorrect: true, questionText: "Tâche visuelle - Étape 10", category: "Perception" },
+        { id: 11, correct: true, initialConfidence: 4, changeOfMind: false, finalConfidence: 4, finalCorrect: true, questionText: "Tâche visuelle - Étape 11", category: "Perception" },
+        { id: 12, correct: false, initialConfidence: 4, changeOfMind: false, finalConfidence: 4, finalCorrect: false, questionText: "Tâche visuelle - Étape 12", category: "Perception" },
+        { id: 13, correct: true, initialConfidence: 2, changeOfMind: true, finalConfidence: 5, finalCorrect: true, questionText: "Tâche visuelle - Étape 13", category: "Perception" },
+        { id: 14, correct: false, initialConfidence: 1, changeOfMind: true, finalConfidence: 3, finalCorrect: true, questionText: "Tâche visuelle - Étape 14", category: "Perception" },
+        { id: 15, correct: true, initialConfidence: 5, changeOfMind: false, finalConfidence: 5, finalCorrect: true, questionText: "Tâche visuelle - Étape 15", category: "Perception" }
+      ];
+
+      // ==========================================
+      // STATE MANAGEMENT
+      // ==========================================
+      let appState = {
+        rawHeaders: [],
+        rawRows: [],
+        sourceName: '',
+        columnMapping: {
+          idCol: '',
+          correctCol: '',
+          initialConfidenceCol: '',
+          changeOfMindCol: '',
+          finalConfidenceCol: '',
+          finalCorrectCol: ''
+        },
+        activeData: null, // Holds normalized array of TrialData
+        activeMetrics: null,
+        activeTab: 'evolution',
+        chartInstance: null,
+        
+        // Table filters and paging
+        table: {
+          search: '',
+          categoryFilter: 'all',
+          correctnessFilter: 'all',
+          changeFilter: 'all',
+          currentPage: 1,
+          pageSize: 8,
+          sortColumn: 'id',
+          sortDirection: 'asc'
+        }
+      };
+
+      // Initialize UI Elements
+      window.addEventListener("DOMContentLoaded", () => {
+        lucide.createIcons();
+        initEventListeners();
+        
+        // Auto load saved source or sheets url from localStorage if present
+        const savedUrl = localStorage.getItem("metacog_sheet_url");
+        if (savedUrl) {
+          document.getElementById("sheet-url-input").value = savedUrl;
+          autoLoadGoogleSheet(savedUrl);
+        }
+      });
+
+      // Event binding
+      function initEventListeners() {
+        // Sheet load button
+        document.getElementById("btn-load-sheet").addEventListener("click", handleSheetLoad);
+
+        // File upload click and drag-drop
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+
+        dropZone.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", handleFileSelection);
+
+        dropZone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          dropZone.classList.add("border-indigo-500", "bg-indigo-50/50");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+          dropZone.classList.remove("border-indigo-500", "bg-indigo-50/50");
+        });
+
+        dropZone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dropZone.classList.remove("border-indigo-500", "bg-indigo-50/50");
+          const file = e.dataTransfer.files[0];
+          if (file) {
+            processFile(file);
+          }
+        });
+
+        // Mapping selectors onchange
+        document.querySelectorAll(".map-dropdown").forEach(dropdown => {
+          dropdown.addEventListener("change", updateMappingPreview);
+        });
+
+        // Launch analysis button
+        document.getElementById("btn-apply-mapping").addEventListener("click", runAnalysisWithMapping);
+
+        // Changer de source button
+        document.getElementById("btn-clear-data").addEventListener("click", clearLoadedData);
+      }
+
+      // ==========================================
+      // GOOGLE SHEETS PARSING & NORMALIZATION
+      // ==========================================
+      function extractGoogleSheetInfo(url) {
+        try {
+          const sheetIdMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+          const spreadsheetId = sheetIdMatch ? sheetIdMatch[1] : null;
+
+          const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+          const gid = gidMatch ? gidMatch[1] : null;
+
+          return { spreadsheetId, gid };
+        } catch (e) {
+          return { spreadsheetId: null, gid: null };
+        }
+      }
+
+      function makeGoogleSheetCsvUrl(url) {
+        const { spreadsheetId, gid } = extractGoogleSheetInfo(url);
+        if (!spreadsheetId) return null;
+        
+        let exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+        if (gid) {
+          exportUrl += `&gid=${gid}`;
+        }
+        return exportUrl;
+      }
+
+      function parseCsvText(text) {
+        const lines = [];
+        let row = [];
+        let cell = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const nextChar = text[i + 1];
+
+          if (inQuotes) {
+            if (char === '"') {
+              if (nextChar === '"') {
+                cell += '"';
+                i++;
+              } else {
+                inQuotes = false;
+              }
+            } else {
+              cell += char;
+            }
+          } else {
+            if (char === '"') {
+              inQuotes = true;
+            } else if (char === ",") {
+              row.push(cell.trim());
+              cell = "";
+            } else if (char === "\n" || char === "\r") {
+              if (char === "\r" && nextChar === "\n") {
+                i++;
+              }
+              row.push(cell.trim());
+              if (row.length > 0 && row.some(c => c !== "")) {
+                lines.push(row);
+              }
+              row = [];
+              cell = "";
+            } else {
+              cell += char;
+            }
+          }
+        }
+
+        if (cell !== "" || row.length > 0) {
+          row.push(cell.trim());
+          if (row.some(c => c !== "")) {
+            lines.push(row);
+          }
+        }
+
+        return lines;
+      }
+
+      // Automatically sync/sync loading
+      async function autoLoadGoogleSheet(url) {
+        const notice = document.getElementById("sync-notice");
+        notice.classList.remove("hidden");
+        try {
+          const csvUrl = makeGoogleSheetCsvUrl(url);
+          if (!csvUrl) return;
+          const res = await fetch(csvUrl);
+          if (res.ok) {
+            const text = await res.text();
+            const parsed = parseCsvText(text);
+            if (parsed.length >= 2) {
+              handleDataLoaded(parsed[0], parsed.slice(1), "Google Sheet (Auto-Sync)");
+            }
+          }
+        } catch (e) {
+          console.error("Auto-sync error", e);
+        } finally {
+          notice.classList.add("hidden");
+        }
+      }
+
+      // Handle loading click
+      async function handleSheetLoad() {
+        const url = document.getElementById("sheet-url-input").value.trim();
+        if (!url) return;
+
+        showSheetLoader(true);
+        hideBanner();
+
+        try {
+          const csvUrl = makeGoogleSheetCsvUrl(url);
+          if (!csvUrl) {
+            throw new Error("Format d'URL non reconnu. Copiez l'URL complète de votre barre d'adresse.");
+          }
+
+          const response = await fetch(csvUrl);
+          if (!response.ok) {
+            throw new Error("L'accès au Google Sheet a échoué. Assurez-vous que l'accès général est défini sur 'Tous les utilisateurs disposant du lien' (Lecteur).");
+          }
+
+          const text = await response.text();
+          const parsed = parseCsvText(text);
+          if (parsed.length < 2) {
+            throw new Error("Le document Google Sheets semble vide ou trop court (une ligne d'en-tête et une ligne de données minimum requis).");
+          }
+
+          // Save URL for future auto-syncs
+          localStorage.setItem("metacog_sheet_url", url);
+
+          // Trigger state update
+          handleDataLoaded(parsed[0], parsed.slice(1), "Google Sheet");
+          showBanner("success", "Synchronisation Google Sheet Réussie !", `${parsed.length - 1} essais importés en direct.`);
+        } catch (err) {
+          showBanner("error", "Erreur d'importation Google Sheet", err.message);
+        } finally {
+          showSheetLoader(false);
+        }
+      }
+
+      function showSheetLoader(show) {
+        const loader = document.getElementById("sheet-loader");
+        const btnText = document.getElementById("sheet-btn-text");
+        const btn = document.getElementById("btn-load-sheet");
+
+        if (show) {
+          loader.classList.remove("hidden");
+          btnText.textContent = "Chargement...";
+          btn.disabled = true;
+        } else {
+          loader.classList.add("hidden");
+          btnText.textContent = "Charger";
+          btn.disabled = false;
+        }
+      }
+
+      // ==========================================
+      // FILE SELECTION HANDLERS
+      // ==========================================
+      function handleFileSelection(e) {
+        const file = e.target.files[0];
+        if (file) {
+          processFile(file);
+        }
+      }
+
+      async function processFile(file) {
+        hideBanner();
+        try {
+          const extension = file.name.split(".").pop().toLowerCase();
+          if (extension === "csv") {
+            const text = await file.text();
+            const parsed = parseCsvText(text);
+            if (parsed.length < 2) {
+              throw new Error("Le fichier CSV est vide ou invalide.");
+            }
+            handleDataLoaded(parsed[0], parsed.slice(1), file.name);
+            showBanner("success", "Fichier CSV Chargé !", `${parsed.length - 1} lignes de données détectées.`);
+          } else if (extension === "xlsx" || extension === "xls") {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: "array" });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+            
+            if (rawData.length < 2) {
+              throw new Error("Le document Excel est vide ou invalide.");
+            }
+
+            const headers = rawData[0].map(h => String(h || ''));
+            const rows = rawData.slice(1).map(row => {
+              if (!Array.isArray(row)) return [];
+              return row.map(cell => (cell === null || cell === undefined ? "" : String(cell)));
+            });
+
+            handleDataLoaded(headers, rows, file.name);
+            showBanner("success", "Fichier Excel Importé !", `${rows.length} lignes de données détectées.`);
+          } else {
+            throw new Error("Format non reconnu. Seuls les fichiers .xlsx, .xls et .csv sont autorisés.");
+          }
+        } catch (err) {
+          showBanner("error", "Erreur de fichier", err.message);
+        }
+      }
+
+      // ==========================================
+      // DATA MAPPING PREPARATION
+      // ==========================================
+      function handleDataLoaded(headers, rows, sourceName) {
+        appState.rawHeaders = headers;
+        appState.rawRows = rows;
+        appState.sourceName = sourceName;
+
+        // Auto-guess column mappings
+        const guess = guessColumnMapping(headers);
+        appState.columnMapping = guess;
+
+        // Display configuration card
+        document.getElementById("mapper-source-name").textContent = sourceName;
+        document.getElementById("mapper-section").classList.remove("hidden");
+        
+        // Populate dropdown selectors
+        populateDropdown("map-id", headers, guess.idCol);
+        populateDropdown("map-correct", headers, guess.correctCol);
+        populateDropdown("map-init-conf", headers, guess.initialConfidenceCol);
+        populateDropdown("map-change", headers, guess.changeOfMindCol);
+        populateDropdown("map-final-conf", headers, guess.finalConfidenceCol);
+        populateDropdown("map-final-correct", headers, guess.finalCorrectCol, true);
+
+        // Update active preview rows
+        updateMappingPreview();
+        
+        // Hide dashboard while configuring
+        document.getElementById("active-source-bar").classList.add("hidden");
+        document.getElementById("dashboard-section").classList.add("hidden");
+
+        // Scroll to mapping
+        document.getElementById("mapper-section").scrollIntoView({ behavior: "smooth" });
+      }
+
+      function populateDropdown(dropdownId, headers, selectedValue, isOptional = false) {
+        const select = document.getElementById(dropdownId);
+        select.innerHTML = "";
+
+        if (isOptional) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "-- Déduire automatiquement du changement d'avis --";
+          select.appendChild(opt);
+        } else {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "-- Choisir une colonne --";
+          select.appendChild(opt);
+        }
+
+        headers.forEach(h => {
+          const opt = document.createElement("option");
+          opt.value = h;
+          opt.textContent = h;
+          if (h === selectedValue) {
+            opt.selected = true;
+          }
+          select.appendChild(opt);
+        });
+      }
+
+      function guessColumnMapping(headers) {
+        const clean = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+        let idCol = headers[0] || "";
+        let correctCol = headers[1] || "";
+        let initialConfidenceCol = headers[2] || "";
+        let changeOfMindCol = headers[3] || "";
+        let finalConfidenceCol = headers[4] || "";
+        let finalCorrectCol = "";
+
+        headers.forEach(h => {
+          const ch = clean(h);
+          if (/^(id|n°|num|no|numero|trial|essai|question|index)$/i.test(ch)) {
+            idCol = h;
+          } else if (/^(correct|reponse|resultat|reussite|exact|score|initial_correct|initialcorrect|initial_success|success)$/i.test(ch)) {
+            correctCol = h;
+          } else if (/^(confiance_initiale|initial_confidence|confidence_initial|confiance1|confiance_1|pre_confiance|pre-conf|conf_init|confiance_init|confiance)$/i.test(ch)) {
+            initialConfidenceCol = h;
+          } else if (/^(changement|changement_avis|change|avis|changement_d_avis|changement_d'avis|mind_change|switch|changement_opinion|changementopinion)$/i.test(ch)) {
+            changeOfMindCol = h;
+          } else if (/^(confiance_finale|final_confidence|confidence_final|confiance2|confiance_2|post_confiance|post-conf|conf_fin|confiance_fin)$/i.test(ch)) {
+            finalConfidenceCol = h;
+          } else if (/^(final_correct|finalcorrect|final_success|resultat_final|correct_final|score_final)$/i.test(ch)) {
+            finalCorrectCol = h;
+          }
+        });
+
+        // Fallbacks
+        if (idCol === correctCol) correctCol = headers[1] || "";
+        if (correctCol === initialConfidenceCol) initialConfidenceCol = headers[2] || "";
+        if (initialConfidenceCol === changeOfMindCol) changeOfMindCol = headers[3] || "";
+        if (changeOfMindCol === finalConfidenceCol) finalConfidenceCol = headers[4] || "";
+
+        return { idCol, correctCol, initialConfidenceCol, changeOfMindCol, finalConfidenceCol, finalCorrectCol };
+      }
+
+      // Live conversion preview
+      function updateMappingPreview() {
+        const mapping = {
+          idCol: document.getElementById("map-id").value,
+          correctCol: document.getElementById("map-correct").value,
+          initialConfidenceCol: document.getElementById("map-init-conf").value,
+          changeOfMindCol: document.getElementById("map-change").value,
+          finalConfidenceCol: document.getElementById("map-final-conf").value,
+          finalCorrectCol: document.getElementById("map-final-correct").value
+        };
+
+        // Update appState configuration reference
+        appState.columnMapping = mapping;
+
+        const container = document.getElementById("mapper-preview-rows");
+        container.innerHTML = "";
+
+        // If vital mappings missing, show placeholder
+        if (!mapping.idCol || !mapping.correctCol || !mapping.initialConfidenceCol || !mapping.changeOfMindCol || !mapping.finalConfidenceCol) {
+          container.innerHTML = `
+            <tr>
+              <td colSpan="6" class="p-6 text-center text-slate-400 font-medium">
+                Veuillez lier au moins les champs requis (*) pour générer un aperçu.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        // Map first 3 rows to preview
+        const first3 = appState.rawRows.slice(0, 3);
+        const mapped = mapRawDataToTrialData(appState.rawHeaders, first3, mapping);
+
+        if (mapped.length === 0) {
+          container.innerHTML = `
+            <tr>
+              <td colSpan="6" class="p-6 text-center text-slate-400 font-medium">
+                Erreur de données lors de la conversion de l'aperçu.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        mapped.forEach(d => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-100/40 text-slate-800 font-semibold";
+          
+          tr.innerHTML = `
+            <td class="p-2.5 font-bold font-mono text-indigo-650">${d.id}</td>
+            <td class="p-2.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${d.correct ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}">
+                ${d.correct ? "OUI" : "NON"}
+              </span>
+            </td>
+            <td class="p-2.5 font-bold font-mono">${d.initialConfidence}</td>
+            <td class="p-2.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${d.changeOfMind ? "bg-amber-50 text-amber-700 border border-amber-100" : "bg-slate-100 text-slate-700"}">
+                ${d.changeOfMind ? "CHANGÉ" : "NON"}
+              </span>
+            </td>
+            <td class="p-2.5 font-bold font-mono">${d.finalConfidence}</td>
+            <td class="p-2.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${d.finalCorrect ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}">
+                ${d.finalCorrect ? "OUI" : "NON"}
+              </span>
+            </td>
+          `;
+          container.appendChild(tr);
+        });
+      }
+
+      function mapRawDataToTrialData(headers, rows, mapping) {
+        const idIdx = headers.indexOf(mapping.idCol);
+        const correctIdx = headers.indexOf(mapping.correctCol);
+        const initConfIdx = headers.indexOf(mapping.initialConfidenceCol);
+        const changeIdx = headers.indexOf(mapping.changeOfMindCol);
+        const finalConfIdx = headers.indexOf(mapping.finalConfidenceCol);
+        const finalCorrectIdx = mapping.finalCorrectCol ? headers.indexOf(mapping.finalCorrectCol) : -1;
+
+        const list = [];
+
+        rows.forEach((row, index) => {
+          if (!row || row.length === 0) return;
+
+          const rawId = idIdx !== -1 ? parseInt(row[idIdx], 10) : NaN;
+          const id = isNaN(rawId) ? index + 1 : rawId;
+
+          const rawCorrect = correctIdx !== -1 ? String(row[correctIdx]).toLowerCase().trim() : "";
+          const correct = rawCorrect === "1" || rawCorrect === "true" || rawCorrect === "yes" || rawCorrect === "oui" || rawCorrect === "ok" || rawCorrect === "vrai";
+
+          const rawInitConf = initConfIdx !== -1 ? parseFloat(row[initConfIdx]) : NaN;
+          const initialConfidence = isNaN(rawInitConf) ? 50 : rawInitConf;
+
+          const rawChange = changeIdx !== -1 ? String(row[changeIdx]).toLowerCase().trim() : "";
+          const changeOfMind = rawChange === "1" || rawChange === "true" || rawChange === "yes" || rawChange === "oui" || rawChange === "change" || rawChange === "vrai" || rawChange === "changement";
+
+          const rawFinalConf = finalConfIdx !== -1 ? parseFloat(row[finalConfIdx]) : NaN;
+          const finalConfidence = isNaN(rawFinalConf) ? 50 : rawFinalConf;
+
+          let finalCorrect = correct;
+          if (finalCorrectIdx !== -1 && row[finalCorrectIdx] !== undefined) {
+            const rawFinalCorrect = String(row[finalCorrectIdx]).toLowerCase().trim();
+            finalCorrect = rawFinalCorrect === "1" || rawFinalCorrect === "true" || rawFinalCorrect === "yes" || rawFinalCorrect === "oui" || rawFinalCorrect === "ok" || rawFinalCorrect === "vrai";
+          } else {
+            finalCorrect = changeOfMind ? !correct : correct;
+          }
+
+          // Look for question or category titles
+          let questionText = "";
+          let category = "";
+          headers.forEach((h, hIdx) => {
+            const lh = h.toLowerCase();
+            if (lh.includes("question") || lh.includes("texte") || lh.includes("task") || lh.includes("item")) {
+              questionText = row[hIdx];
+            }
+            if (lh.includes("categorie") || lh.includes("theme") || lh.includes("sujet") || lh.includes("type")) {
+              category = row[hIdx];
+            }
+          });
+
+          list.push({
+            id,
+            correct,
+            initialConfidence,
+            changeOfMind,
+            finalConfidence,
+            finalCorrect,
+            questionText: questionText || `Essai ${id}`,
+            category: category || "Général"
+          });
+        });
+
+        return list.sort((a, b) => a.id - b.id);
+      }
+
+      // ==========================================
+      // ANALYSIS PIPELINE (RUN ANALYSIS)
+      // ==========================================
+      function runAnalysisWithMapping() {
+        const mapping = appState.columnMapping;
+        if (!mapping.idCol || !mapping.correctCol || !mapping.initialConfidenceCol || !mapping.changeOfMindCol || !mapping.finalConfidenceCol) {
+          showBanner("error", "Champs Requis Manquants", "Veuillez associer toutes les colonnes requises (*) avant de lancer l'analyse.");
+          return;
+        }
+
+        // Parse full datasets
+        const trials = mapRawDataToTrialData(appState.rawHeaders, appState.rawRows, mapping);
+        loadNormalizedDataset(trials, appState.sourceName);
+        
+        // Hide config mapper
+        document.getElementById("mapper-section").classList.add("hidden");
+        showBanner("success", "Analyse Prête !", `${trials.length} essais analysés avec succès.`);
+      }
+
+      function loadNormalizedDataset(trials, sourceName) {
+        appState.activeData = trials;
+        appState.sourceName = sourceName;
+        appState.activeMetrics = calculateMetrics(trials);
+
+        // Render dashboard elements
+        document.getElementById("active-source-title").textContent = sourceName;
+        document.getElementById("active-source-bar").classList.remove("hidden");
+        document.getElementById("dashboard-section").classList.remove("hidden");
+
+        renderMetricsRow();
+        renderVerdictCard();
+        
+        // Setup filters & trials table
+        initTableFilters();
+        renderTable();
+
+        // Setup active Tab & Chart
+        switchTab('evolution');
+
+        // Scroll to active dashboard
+        document.getElementById("active-source-bar").scrollIntoView({ behavior: "smooth" });
+      }
+
+      // Direct demo data loader (no mapping required)
+      function loadDemoData(type) {
+        hideBanner();
+        if (type === 1) {
+          loadNormalizedDataset(DEMO_DATA_1, "Quiz Décisionnel (Démo 100%)");
+          showBanner("success", "Données de Démo Chargées", "Analyse en cours sur le profil cognitif 'Quiz Décisionnel' (échelle de 0 à 100%).");
+        } else {
+          loadNormalizedDataset(DEMO_DATA_2, "Perception Visuelle (Démo 1-5)");
+          showBanner("success", "Données de Démo Chargées", "Analyse en cours sur le profil cognitif 'Perception Visuelle' (échelle de 1 à 5).");
+        }
+        document.getElementById("mapper-section").classList.add("hidden");
+      }
+
+      function clearLoadedData() {
+        appState.rawHeaders = [];
+        appState.rawRows = [];
+        appState.activeData = null;
+        appState.activeMetrics = null;
+
+        document.getElementById("mapper-section").classList.add("hidden");
+        document.getElementById("active-source-bar").classList.add("hidden");
+        document.getElementById("dashboard-section").classList.add("hidden");
+        hideBanner();
+        
+        localStorage.removeItem("metacog_sheet_url");
+      }
+
+      // ==========================================
+      // METRICS ENGINE
+      // ==========================================
+      function calculateMetrics(data) {
+        const total = data.length;
+        if (total === 0) return null;
+
+        const initialCorrect = data.filter(d => d.correct).length;
+        const correctRate = (initialCorrect / total) * 100;
+
+        const finalCorrect = data.filter(d => d.finalCorrect).length;
+        const finalCorrectRate = (finalCorrect / total) * 100;
+
+        const sumInitialConf = data.reduce((sum, d) => sum + d.initialConfidence, 0);
+        const avgInitialConfidence = sumInitialConf / total;
+
+        const sumFinalConf = data.reduce((sum, d) => sum + d.finalConfidence, 0);
+        const avgFinalConfidence = sumFinalConf / total;
+
+        const changeCount = data.filter(d => d.changeOfMind).length;
+        const changeOfMindRate = (changeCount / total) * 100;
+
+        // Success when changed
+        const changedTrials = data.filter(d => d.changeOfMind);
+        const correctChanged = changedTrials.filter(d => d.finalCorrect).length;
+        const accuracyWhenChanged = changedTrials.length > 0 ? (correctChanged / changedTrials.length) * 100 : 0;
+
+        // Success when kept
+        const keptTrials = data.filter(d => !d.changeOfMind);
+        const correctKept = keptTrials.filter(d => d.finalCorrect).length;
+        const accuracyWhenKept = keptTrials.length > 0 ? (correctKept / keptTrials.length) * 100 : 0;
+
+        // Confidence when final is correct vs incorrect
+        const correctFinalTrials = data.filter(d => d.finalCorrect);
+        const incorrectFinalTrials = data.filter(d => !d.finalCorrect);
+
+        const sumConfCorrect = correctFinalTrials.reduce((sum, d) => sum + d.finalConfidence, 0);
+        const avgConfWhenCorrect = correctFinalTrials.length > 0 ? sumConfCorrect / correctFinalTrials.length : 0;
+
+        const sumConfIncorrect = incorrectFinalTrials.reduce((sum, d) => sum + d.finalConfidence, 0);
+        const avgConfWhenIncorrect = incorrectFinalTrials.length > 0 ? sumConfIncorrect / incorrectFinalTrials.length : 0;
+
+        const calibrationScore = avgConfWhenCorrect - avgConfWhenIncorrect;
+
+        return {
+          totalTrials: total,
+          correctRate,
+          finalCorrectRate,
+          avgInitialConfidence,
+          avgFinalConfidence,
+          changeOfMindRate,
+          accuracyWhenChanged,
+          accuracyWhenKept,
+          avgConfWhenCorrect,
+          avgConfWhenIncorrect,
+          calibrationScore
+        };
+      }
+
+      // ==========================================
+      // RENDERERS
+      // ==========================================
+      function renderMetricsRow() {
+        const m = appState.activeMetrics;
+        if (!m) return;
+
+        // Initial Success
+        document.getElementById("metric-initial-accuracy").textContent = `${m.correctRate.toFixed(1)}%`;
+
+        // Final Success & Badge
+        document.getElementById("metric-final-accuracy").textContent = `${m.finalCorrectRate.toFixed(1)}%`;
+        const accDiff = m.finalCorrectRate - m.correctRate;
+        const accBadge = document.getElementById("metric-accuracy-diff");
+        accBadge.textContent = `${accDiff >= 0 ? '+' : ''}${accDiff.toFixed(1)}%`;
+        if (accDiff > 0) {
+          accBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono bg-emerald-50 text-emerald-700 border border-emerald-200";
+        } else if (accDiff < 0) {
+          accBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono bg-rose-50 text-rose-700 border border-rose-200";
+        } else {
+          accBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono bg-slate-100 text-slate-600";
+        }
+
+        // Initial Confidence
+        document.getElementById("metric-initial-confidence").textContent = m.avgInitialConfidence.toFixed(1);
+
+        // Final Confidence
+        document.getElementById("metric-final-confidence").textContent = m.avgFinalConfidence.toFixed(1);
+        const confDiff = m.avgFinalConfidence - m.avgInitialConfidence;
+        const confBadge = document.getElementById("metric-confidence-diff");
+        confBadge.textContent = `${confDiff >= 0 ? '+' : ''}${confDiff.toFixed(1)}`;
+        if (confDiff > 0) {
+          confBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono bg-emerald-50 text-emerald-700 border border-emerald-200";
+        } else if (accDiff < 0) {
+          confBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono bg-rose-50 text-rose-700 border border-rose-200";
+        } else {
+          confBadge.className = "text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono bg-slate-100 text-slate-600";
+        }
+
+        // Change Rate
+        document.getElementById("metric-change-rate").textContent = `${m.changeOfMindRate.toFixed(1)}%`;
+      }
+
+      function renderVerdictCard() {
+        const m = appState.activeMetrics;
+        if (!m) return;
+
+        const points = [];
+        let title = "";
+        let desc = "";
+        let recommendation = "";
+        let badgeColorClass = "";
+
+        // Metacognitive Calibration calculation
+        if (m.calibrationScore > 25) {
+          title = "Excellente Métacognition";
+          desc = "L'apprenant a une excellente conscience de ses compétences. Sa confiance est un signal très fiable de la justesse de ses réponses.";
+          badgeColorClass = "bg-emerald-950 text-emerald-300 border-emerald-800";
+          points.push(`<strong>Calibration forte :</strong> l'écart de confiance entre les réponses correctes et incorrectes est marqué par un écart sain de <strong>${m.calibrationScore.toFixed(1)} points</strong>.`);
+        } else if (m.calibrationScore > 10) {
+          title = "Calibration Modérée";
+          desc = "L'apprenant sait globalement quand il a raison ou tort, mais il subsiste quelques zones d'hésitation ou de surconfiance modérées.";
+          badgeColorClass = "bg-blue-950 text-blue-300 border-blue-800";
+          points.push(`<strong>Calibration positive :</strong> l'apprenant affiche en moyenne une plus grande certitude lorsqu'il a raison (écart de <strong>+${m.calibrationScore.toFixed(1)} points</strong>).`);
+        } else {
+          title = "Biais de Calibrage / Discernement Faible";
+          desc = "Il y a un décalage prononcé entre le sentiment de certitude et l'exactitude réelle. L'apprenant tend soit à douter à tort, soit à faire preuve de surconfiance dans ses erreurs.";
+          badgeColorClass = "bg-amber-950 text-amber-300 border-amber-800";
+          points.push(`<strong>Faible discernement :</strong> la confiance moyenne varie peu entre les bonnes et les mauvaises réponses (écart de seulement <strong>${m.calibrationScore.toFixed(1)} points</strong>).`);
+        }
+
+        // Did revising help?
+        const improvement = m.finalCorrectRate - m.correctRate;
+        if (improvement > 5) {
+          points.push(`<strong>Bénéfice du doute :</strong> Le changement d'avis a permis d'élever l'exactitude globale de <strong>+${improvement.toFixed(1)}%</strong>.`);
+          points.push(`<strong>Efficacité de la révision :</strong> Le taux de réussite après modification s'élève à <strong>${m.accuracyWhenChanged.toFixed(1)}%</strong>, prouvant une réévaluation hautement constructive.`);
+        } else if (improvement < 0) {
+          points.push(`<strong>Effet de confusion :</strong> Le changement d'avis a diminué la réussite globale de <strong>${Math.abs(improvement).toFixed(1)}%</strong>. L'apprenant a abandonné ses intuitions initiales correctes.`);
+          points.push(`<strong>Taux de réussite après modification :</strong> Seulement <strong>${m.accuracyWhenChanged.toFixed(1)}%</strong> de réponses correctes lors des changements.`);
+        } else {
+          points.push(`<strong>Stabilité nette :</strong> Le taux de réussite est resté identique (<strong>${m.correctRate.toFixed(1)}%</strong>) après révision.`);
+        }
+
+        // Change behavior
+        if (m.changeOfMindRate > 40) {
+          points.push(`<strong>Haute flexibilité cognitive :</strong> Changement d'avis opéré sur <strong>${m.changeOfMindRate.toFixed(1)}%</strong> des essais, suggérant une réceptivité intense.`);
+        } else if (m.changeOfMindRate < 10) {
+          points.push(`<strong>Forte certitude / Résistance :</strong> Seulement <strong>${m.changeOfMindRate.toFixed(1)}%</strong> de révisions, l'apprenant demeurant ancré sur ses options initiales.`);
+        }
+
+        // Recommendations formulation
+        if (improvement > 5 && m.calibrationScore > 15) {
+          recommendation = "Continuer ainsi ! Le processus réflexif est extrêmement sain. Encouragez l'apprenant à consolider sa confiance native sur les sujets maîtrisés.";
+        } else if (improvement < 0) {
+          recommendation = "Travailler sur la persévérance et l'analyse de l'instinct initial. L'apprenant doute de lui-même à tort. Conseillez-lui de conserver sa première réponse en cas d'hésitation.";
+        } else if (m.calibrationScore < 10) {
+          recommendation = "Fournir des feedbacks réguliers et immédiats pour calibrer le sentiment de difficulté. Intégrez des exercices de confrontation de la certitude.";
+        } else {
+          recommendation = "Encourager la formalisation des connaissances pour transformer les intuitions correctes à faible confiance en certitudes affirmées.";
+        }
+
+        // Write outputs
+        document.getElementById("verdict-title").textContent = title;
+        document.getElementById("verdict-desc").textContent = desc;
+        document.getElementById("verdict-recommendation").textContent = recommendation;
+        
+        const badge = document.getElementById("verdict-badge");
+        badge.textContent = title;
+        badge.className = `px-3 py-1 text-xs font-extrabold uppercase tracking-wider rounded border ${badgeColorClass}`;
+
+        const pointsList = document.getElementById("verdict-points");
+        pointsList.innerHTML = "";
+        points.forEach(pt => {
+          const li = document.createElement("li");
+          li.className = "flex gap-2 items-start";
+          li.innerHTML = `
+            <span class="text-indigo-400 mt-0.5 shrink-0">•</span>
+            <span>${pt}</span>
+          `;
+          pointsList.appendChild(li);
+        });
+      }
+
+      // ==========================================
+      // CHARTS & VISUALIZATIONS
+      // ==========================================
+      function switchTab(tabId) {
+        appState.activeTab = tabId;
+
+        // Toggle button states
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+          btn.className = "tab-btn px-3 py-1.5 rounded transition cursor-pointer text-slate-600 hover:text-slate-950";
+        });
+        const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+        activeBtn.className = "tab-btn px-3 py-1.5 rounded transition cursor-pointer bg-indigo-600 text-white font-extrabold shadow-sm";
+
+        renderChart();
+      }
+
+      function renderChart() {
+        const ctx = document.getElementById("dashboard-chart").getContext("2d");
+        const data = appState.activeData;
+        const m = appState.activeMetrics;
+        if (!data || !m) return;
+
+        // Destroy previous instance
+        if (appState.chartInstance) {
+          appState.chartInstance.destroy();
+        }
+
+        if (appState.activeTab === 'evolution') {
+          // Line Chart: Trial ID vs Initial / Final Confidence
+          const labels = data.map(d => `Essai ${d.id}`);
+          const initConfValues = data.map(d => d.initialConfidence);
+          const finalConfValues = data.map(d => d.finalConfidence);
+
+          appState.chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'Confiance Initiale',
+                  data: initConfValues,
+                  borderColor: '#ef4444', // red-500
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  borderWidth: 2.5,
+                  tension: 0.25,
+                  fill: false
+                },
+                {
+                  label: 'Confiance Finale',
+                  data: finalConfValues,
+                  borderColor: '#10b981', // emerald-500
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  borderWidth: 2.5,
+                  tension: 0.25,
+                  fill: false
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'top', labels: { font: { weight: 'bold', family: 'Inter' } } }
+              },
+              scales: {
+                y: { min: 0, title: { display: true, text: 'Niveau de Certitude' } }
+              }
+            }
+          });
+
+        } else if (appState.activeTab === 'change') {
+          // Bar Chart: Success Rate when changed vs Success Rate when kept
+          appState.chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ["Réussite si Changement d'avis", "Réussite si Avis Stable"],
+              datasets: [
+                {
+                  label: 'Pourcentage de réussite (%)',
+                  data: [m.accuracyWhenChanged, m.accuracyWhenKept],
+                  backgroundColor: ['#4f46e5', '#94a3b8'], // Indigo vs Slate
+                  borderWidth: 0,
+                  borderRadius: 6,
+                  maxBarThickness: 60
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                y: { min: 0, max: 100, title: { display: true, text: 'Taux de Réussite (%)' } }
+              }
+            }
+          });
+
+        } else if (appState.activeTab === 'calibration') {
+          // Bar Chart: Avg confidence when final answer is correct vs incorrect
+          appState.chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ["Essais Corrects", "Essais Incorrects"],
+              datasets: [
+                {
+                  label: 'Certitude Moyenne Finale',
+                  data: [m.avgConfWhenCorrect, m.avgConfWhenIncorrect],
+                  backgroundColor: ['#10b981', '#f43f5e'], // Emerald vs Rose
+                  borderWidth: 0,
+                  borderRadius: 6,
+                  maxBarThickness: 60
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                y: { min: 0, title: { display: true, text: 'Confiance Moyenne' } }
+              }
+            }
+          });
+        }
+      }
+
+      // ==========================================
+      // TRIALS TABLE (SEARCH, FILTER, PAGINATE, SORT)
+      // ==========================================
+      function initTableFilters() {
+        const data = appState.activeData;
+        if (!data) return;
+
+        // Auto extract categories for selector
+        const categories = Array.from(new Set(data.map(d => d.category || 'Général'))).filter(Boolean);
+        const select = document.getElementById("filter-category");
+        
+        // Clear except first option
+        select.innerHTML = '<option value="all">Toutes catégories</option>';
+        categories.forEach(cat => {
+          const opt = document.createElement("option");
+          opt.value = cat;
+          opt.textContent = cat;
+          select.appendChild(opt);
+        });
+
+        // Reset state
+        appState.table = {
+          search: '',
+          categoryFilter: 'all',
+          correctnessFilter: 'all',
+          changeFilter: 'all',
+          currentPage: 1,
+          pageSize: 8,
+          sortColumn: 'id',
+          sortDirection: 'asc'
+        };
+
+        // Reset filter inputs
+        document.getElementById("filter-search").value = "";
+        document.getElementById("filter-category").value = "all";
+        document.getElementById("filter-correctness").value = "all";
+        document.getElementById("filter-change").value = "all";
+      }
+
+      function resetTableFilters() {
+        initTableFilters();
+        renderTable();
+      }
+
+      function onTableFilterChange() {
+        appState.table.search = document.getElementById("filter-search").value.toLowerCase();
+        appState.table.categoryFilter = document.getElementById("filter-category").value;
+        appState.table.correctnessFilter = document.getElementById("filter-correctness").value;
+        appState.table.changeFilter = document.getElementById("filter-change").value;
+        appState.table.currentPage = 1;
+
+        renderTable();
+      }
+
+      function sortTable(column) {
+        if (appState.table.sortColumn === column) {
+          appState.table.sortDirection = appState.table.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          appState.table.sortColumn = column;
+          appState.table.sortDirection = 'asc';
+        }
+        renderTable();
+      }
+
+      function renderTable() {
+        const data = appState.activeData;
+        if (!data) return;
+
+        const tableBody = document.getElementById("trials-table-rows");
+        tableBody.innerHTML = "";
+
+        // 1. FILTERING
+        let filtered = data.filter(d => {
+          // Search match
+          const searchMatch = !appState.table.search || 
+                              String(d.id).includes(appState.table.search) || 
+                              d.questionText.toLowerCase().includes(appState.table.search) || 
+                              d.category.toLowerCase().includes(appState.table.search);
+
+          // Category match
+          const categoryMatch = appState.table.categoryFilter === 'all' || d.category === appState.table.categoryFilter;
+
+          // Correctness match
+          let correctnessMatch = true;
+          if (appState.table.correctnessFilter === 'correct') correctnessMatch = d.finalCorrect;
+          else if (appState.table.correctnessFilter === 'incorrect') correctnessMatch = !d.finalCorrect;
+
+          // Change behavior match
+          let changeMatch = true;
+          if (appState.table.changeFilter === 'changed') changeMatch = d.changeOfMind;
+          else if (appState.table.changeFilter === 'kept') changeMatch = !d.changeOfMind;
+
+          return searchMatch && categoryMatch && correctnessMatch && changeMatch;
+        });
+
+        // 2. SORTING
+        const col = appState.table.sortColumn;
+        const dir = appState.table.sortDirection === 'asc' ? 1 : -1;
+
+        filtered.sort((a, b) => {
+          let valA = a[col];
+          let valB = b[col];
+
+          if (typeof valA === 'string') {
+            return valA.localeCompare(valB) * dir;
+          }
+          return (valA - valB) * dir;
+        });
+
+        // 3. PAGINATION
+        const totalItems = filtered.length;
+        const totalPages = Math.ceil(totalItems / appState.table.pageSize) || 1;
+        
+        if (appState.table.currentPage > totalPages) {
+          appState.table.currentPage = totalPages;
+        }
+
+        const startIdx = (appState.table.currentPage - 1) * appState.table.pageSize;
+        const endIdx = startIdx + appState.table.pageSize;
+        const paginated = filtered.slice(startIdx, endIdx);
+
+        // Update Paging Text
+        const pagingInfo = document.getElementById("table-pagination-info");
+        if (totalItems === 0) {
+          pagingInfo.textContent = "Aucun essai trouvé";
+        } else {
+          pagingInfo.innerHTML = `Affichage de <span class="font-bold text-slate-800">${startIdx + 1}</span> à <span class="font-bold text-slate-800">${Math.min(endIdx, totalItems)}</span> sur <span class="font-bold text-slate-800">${totalItems}</span> essais`;
+        }
+        
+        document.getElementById("table-current-page-text").textContent = `Page ${appState.table.currentPage} sur ${totalPages}`;
+        
+        // Enable/Disable buttons
+        document.getElementById("btn-prev-page").disabled = appState.table.currentPage === 1;
+        document.getElementById("btn-next-page").disabled = appState.table.currentPage === totalPages;
+
+        if (totalItems === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colSpan="8" class="p-8 text-center text-slate-400 font-medium">
+                Aucun essai ne correspond à vos filtres.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        // Draw rows
+        paginated.forEach((d, index) => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50/50 text-slate-850 font-semibold";
+          
+          tr.innerHTML = `
+            <td class="p-3.5 font-bold font-mono text-indigo-650">${d.id}</td>
+            <td class="p-3.5 max-w-[200px] truncate" title="${d.questionText}">${d.questionText}</td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] rounded border border-slate-200 font-extrabold uppercase tracking-wider">
+                ${d.category || "Général"}
+              </span>
+            </td>
+            <td class="p-3.5">
+              ${d.correct ? `
+                <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                  <i data-lucide="check" class="w-3 h-3"></i> OUI
+                </span>
+              ` : `
+                <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                  <i data-lucide="x" class="w-3 h-3"></i> NON
+                </span>
+              `}
+            </td>
+            <td class="p-3.5 font-bold font-mono">${d.initialConfidence}</td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${d.changeOfMind ? "bg-amber-50 text-amber-850 border border-amber-200" : "bg-slate-150 text-slate-700"}">
+                ${d.changeOfMind ? "CHANGÉ" : "STABLE"}
+              </span>
+            </td>
+            <td class="p-3.5 font-bold font-mono">${d.finalConfidence}</td>
+            <td class="p-3.5">
+              ${d.finalCorrect ? `
+                <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                  <i data-lucide="check" class="w-3 h-3"></i> OUI
+                </span>
+              ` : `
+                <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                  <i data-lucide="x" class="w-3 h-3"></i> NON
+                </span>
+              `}
+            </td>
+          `;
+          tableBody.appendChild(tr);
+        });
+
+        // Trigger icon creation for table checks/crosses
+        lucide.createIcons();
+      }
+
+      function prevTablePage() {
+        if (appState.table.currentPage > 1) {
+          appState.table.currentPage--;
+          renderTable();
+        }
+      }
+
+      function nextTablePage() {
+        const totalItems = appState.activeData ? appState.activeData.length : 0;
+        const totalPages = Math.ceil(totalItems / appState.table.pageSize) || 1;
+        if (appState.table.currentPage < totalPages) {
+          appState.table.currentPage++;
+          renderTable();
+        }
+      }
+
+      // ==========================================
+      // STATUS BANNER UTILITIES
+      // ==========================================
+      function showBanner(type, title, message) {
+        const banner = document.getElementById("status-banner");
+        const iconContainer = document.getElementById("status-icon-container");
+        const titleEl = document.getElementById("status-title");
+        const messageEl = document.getElementById("status-message");
+
+        banner.classList.remove("hidden", "bg-emerald-50", "border-emerald-200", "text-emerald-700", "bg-rose-50", "border-rose-200", "text-rose-700");
+        iconContainer.innerHTML = "";
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+
+        if (type === "success") {
+          banner.classList.add("bg-emerald-50", "border", "border-emerald-200", "text-emerald-750");
+          iconContainer.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>';
+        } else if (type === "error") {
+          banner.classList.add("bg-rose-50", "border", "border-rose-200", "text-rose-750");
+          iconContainer.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-rose-600"></i>';
+        }
+
+        banner.classList.remove("hidden");
+        lucide.createIcons();
+      }
+
+      function hideBanner() {
+        document.getElementById("status-banner").classList.add("hidden");
+      }
+    </script>
+  </body>
 </html>
