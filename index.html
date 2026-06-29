@@ -954,24 +954,30 @@
       function guessColumnMapping(headers) {
         const clean = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-        let idCol = headers[0] || "";
-        let correctCol = headers[1] || "";
-        let initialConfidenceCol = headers[2] || "";
-        let changeOfMindCol = headers[3] || "";
-        let finalConfidenceCol = headers[4] || "";
+        let idCol = "";
+        let correctCol = "";
+        let typeReelCol = "";
+        let premierAvisCol = "";
+        let initialConfidenceCol = "";
+        let changeOfMindCol = "";
+        let finalConfidenceCol = "";
         let finalCorrectCol = "";
 
         headers.forEach(h => {
           const ch = clean(h);
           if (/^(id|n°|num|no|numero|trial|essai|question|index)$/i.test(ch)) {
             idCol = h;
+          } else if (ch.includes("reel") && (ch.includes("type") || ch.includes("vrai") || ch.includes("exact"))) {
+            typeReelCol = h;
+          } else if ((ch.includes("premier") || ch.includes("initial") || ch.includes("1er") || ch.includes("pre-") || ch.includes("avant")) && (ch.includes("avis") || ch.includes("opinion") || ch.includes("reponse") || ch.includes("choix") || ch.includes("decision"))) {
+            premierAvisCol = h;
           } else if (/^(correct|reponse|resultat|reussite|exact|score|initial_correct|initialcorrect|initial_success|success)$/i.test(ch)) {
             correctCol = h;
-          } else if (/^(confiance_initiale|initial_confidence|confidence_initial|confiance1|confiance_1|pre_confiance|pre-conf|conf_init|confiance_init|confiance)$/i.test(ch)) {
+          } else if (ch.includes("confiance") && (ch.includes("initial") || ch.includes("1") || ch.includes("pre") || ch.includes("conf_init") || ch.includes("init"))) {
             initialConfidenceCol = h;
-          } else if (/^(changement|changement_avis|change|avis|changement_d_avis|changement_d'avis|mind_change|switch|changement_opinion|changementopinion)$/i.test(ch)) {
+          } else if (ch.includes("changement") || ch.includes("change") || ch.includes("mind_change") || ch.includes("switch")) {
             changeOfMindCol = h;
-          } else if (/^(confiance_finale|final_confidence|confidence_final|confiance2|confiance_2|post_confiance|post-conf|conf_fin|confiance_fin)$/i.test(ch)) {
+          } else if (ch.includes("confiance") && (ch.includes("final") || ch.includes("2") || ch.includes("post") || ch.includes("conf_fin") || ch.includes("fin"))) {
             finalConfidenceCol = h;
           } else if (/^(final_correct|finalcorrect|final_success|resultat_final|correct_final|score_final)$/i.test(ch)) {
             finalCorrectCol = h;
@@ -979,17 +985,34 @@
         });
 
         // Fallbacks
-        if (idCol === correctCol) correctCol = headers[1] || "";
-        if (correctCol === initialConfidenceCol) initialConfidenceCol = headers[2] || "";
-        if (initialConfidenceCol === changeOfMindCol) changeOfMindCol = headers[3] || "";
-        if (changeOfMindCol === finalConfidenceCol) finalConfidenceCol = headers[4] || "";
+        if (!idCol) {
+          const dateCol = headers.find(h => clean(h).includes("date"));
+          const emailCol = headers.find(h => clean(h).includes("email") || clean(h).includes("mail"));
+          idCol = dateCol || emailCol || headers[0] || "";
+        }
 
-        return { idCol, correctCol, initialConfidenceCol, changeOfMindCol, finalConfidenceCol, finalCorrectCol };
+        if (!initialConfidenceCol) {
+          initialConfidenceCol = headers.find(h => {
+            const ch = clean(h);
+            return ch.includes("confiance") && !ch.includes("final") && !ch.includes("2") && !ch.includes("post") && !ch.includes("fin");
+          }) || "";
+        }
+
+        if (!finalConfidenceCol) {
+          finalConfidenceCol = headers.find(h => {
+            const ch = clean(h);
+            return ch.includes("confiance") && (ch.includes("final") || ch.includes("2") || ch.includes("post") || ch.includes("fin"));
+          }) || "";
+        }
+
+        return { idCol, correctCol, typeReelCol, premierAvisCol, initialConfidenceCol, changeOfMindCol, finalConfidenceCol, finalCorrectCol };
       }
 
       function mapRawDataToTrialData(headers, rows, mapping) {
         const idIdx = headers.indexOf(mapping.idCol);
         const correctIdx = headers.indexOf(mapping.correctCol);
+        const typeReelIdx = mapping.typeReelCol ? headers.indexOf(mapping.typeReelCol) : -1;
+        const premierAvisIdx = mapping.premierAvisCol ? headers.indexOf(mapping.premierAvisCol) : -1;
         const initConfIdx = headers.indexOf(mapping.initialConfidenceCol);
         const changeIdx = headers.indexOf(mapping.changeOfMindCol);
         const finalConfIdx = headers.indexOf(mapping.finalConfidenceCol);
@@ -997,14 +1020,33 @@
 
         const list = [];
 
+        // Helper to normalize opinions ("Réelle", "IA", etc.)
+        const normalizeOpinion = (val) => {
+          if (!val) return "";
+          const s = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          if (s.includes("reel")) return "reel";
+          if (s.includes("ia") || s.includes("ai")) return "ia";
+          return s;
+        };
+
         rows.forEach((row, index) => {
           if (!row || row.length === 0) return;
 
-          const rawId = idIdx !== -1 ? parseInt(row[idIdx], 10) : NaN;
-          const id = isNaN(rawId) ? index + 1 : rawId;
+          // Compute ID: if we have numeric or string representation, let's use it, or fallback to index
+          const rawVal = idIdx !== -1 ? String(row[idIdx]).trim() : "";
+          const rawId = parseInt(rawVal, 10);
+          const id = (!isNaN(rawId) && String(rawId) === rawVal) ? rawId : (rawVal || index + 1);
 
-          const rawCorrect = correctIdx !== -1 ? String(row[correctIdx]).toLowerCase().trim() : "";
-          const correct = rawCorrect === "1" || rawCorrect === "true" || rawCorrect === "yes" || rawCorrect === "oui" || rawCorrect === "ok" || rawCorrect === "vrai";
+          // Compute initial correctness
+          let correct = false;
+          if (typeReelIdx !== -1 && premierAvisIdx !== -1) {
+            const trVal = normalizeOpinion(row[typeReelIdx]);
+            const paVal = normalizeOpinion(row[premierAvisIdx]);
+            correct = (trVal !== "" && paVal !== "" && trVal === paVal);
+          } else if (correctIdx !== -1) {
+            const rawCorrect = String(row[correctIdx]).toLowerCase().trim();
+            correct = rawCorrect === "1" || rawCorrect === "true" || rawCorrect === "yes" || rawCorrect === "oui" || rawCorrect === "ok" || rawCorrect === "vrai" || rawCorrect === "correct";
+          }
 
           const rawInitConf = initConfIdx !== -1 ? parseFloat(row[initConfIdx]) : NaN;
           const initialConfidence = isNaN(rawInitConf) ? 50 : rawInitConf;
@@ -1020,15 +1062,18 @@
             const rawFinalCorrect = String(row[finalCorrectIdx]).toLowerCase().trim();
             finalCorrect = rawFinalCorrect === "1" || rawFinalCorrect === "true" || rawFinalCorrect === "yes" || rawFinalCorrect === "oui" || rawFinalCorrect === "ok" || rawFinalCorrect === "vrai";
           } else {
+            // If they changed their mind, their final choice is the opposite of initial.
             finalCorrect = changeOfMind ? !correct : correct;
           }
 
-          // Look for question or category titles
+          // Look for question or category titles (such as image URL)
           let questionText = "";
           let category = "";
           headers.forEach((h, hIdx) => {
             const lh = h.toLowerCase();
-            if (lh.includes("question") || lh.includes("texte") || lh.includes("task") || lh.includes("item")) {
+            if (lh.includes("url") || lh.includes("image") || lh.includes("photo") || lh.includes("visuel")) {
+              questionText = row[hIdx];
+            } else if (!questionText && (lh.includes("question") || lh.includes("texte") || lh.includes("task") || lh.includes("item"))) {
               questionText = row[hIdx];
             }
             if (lh.includes("categorie") || lh.includes("theme") || lh.includes("sujet") || lh.includes("type")) {
@@ -1048,7 +1093,12 @@
           });
         });
 
-        return list.sort((a, b) => a.id - b.id);
+        // Sort by ID if they are strictly numeric
+        const allIdsNumeric = list.every(d => !isNaN(parseInt(String(d.id), 10)) && String(parseInt(String(d.id), 10)) === String(d.id));
+        if (allIdsNumeric) {
+          return list.sort((a, b) => parseInt(String(a.id), 10) - parseInt(String(b.id), 10));
+        }
+        return list;
       }
 
       // ==========================================
@@ -1585,9 +1635,17 @@
           const tr = document.createElement("tr");
           tr.className = "hover:bg-slate-50/50 text-slate-850 font-semibold";
           
+          const isUrlOrPath = d.questionText.startsWith('http') || d.questionText.includes('/') || d.questionText.includes('.');
+          const displayQuestion = isUrlOrPath ? `
+            <span class="inline-flex items-center gap-1.5 text-indigo-650 font-sans" title="${d.questionText}">
+              <i data-lucide="image" class="w-3.5 h-3.5 shrink-0"></i>
+              <span class="truncate max-w-[170px]">${d.questionText.split('/').pop()}</span>
+            </span>
+          ` : d.questionText;
+
           tr.innerHTML = `
             <td class="p-3.5 font-bold font-mono text-indigo-650">${d.id}</td>
-            <td class="p-3.5 max-w-[200px] truncate" title="${d.questionText}">${d.questionText}</td>
+            <td class="p-3.5 max-w-[200px] truncate">${displayQuestion}</td>
             <td class="p-3.5">
               <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] rounded border border-slate-200 font-extrabold uppercase tracking-wider">
                 ${d.category || "Général"}
