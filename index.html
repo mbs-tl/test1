@@ -207,152 +207,7 @@
         </div>
       </section>
 
-      <!-- COLUMN MAPPER SECTION -->
-      <section id="mapper-section" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-indigo-50 border border-indigo-100 text-indigo-650 rounded">
-              <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i>
-            </div>
-            <div>
-              <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Configuration des Colonnes</h2>
-              <p class="text-xs text-slate-500 mt-0.5">Source : <span id="mapper-source-name" class="font-bold text-indigo-600">Fichier</span>. Associez vos colonnes pour l'analyse.</p>
-            </div>
-          </div>
-          
-          <div class="flex items-center gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded">
-            <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
-            <span class="font-semibold">Vérifiez que les types correspondent pour des calculs fiables.</span>
-          </div>
-        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          <!-- Dropdowns left column -->
-          <div class="lg:col-span-5 space-y-4">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-              <i data-lucide="list-filter" class="w-4 h-4 text-indigo-600"></i>
-              Mappage des champs requis :
-            </h3>
-
-            <div class="space-y-4" id="mapping-dropdowns-container">
-              <!-- Dynamically populated fields -->
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">
-                  Index / Numéro d'essai <span class="text-rose-500">*</span>
-                </label>
-                <select id="map-id" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
-                  <option value="">-- Choisir une colonne --</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">
-                  Réussite Initiale (Correct / Non Correct) <span class="text-rose-500">*</span>
-                </label>
-                <select id="map-correct" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
-                  <option value="">-- Choisir une colonne --</option>
-                </select>
-                <p class="text-[10px] text-slate-400 font-medium mt-0.5">Valeurs comprises : 1, true, oui, yes, vrai.</p>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">
-                  Confiance Initiale <span class="text-rose-500">*</span>
-                </label>
-                <select id="map-init-conf" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
-                  <option value="">-- Choisir une colonne --</option>
-                </select>
-                <p class="text-[10px] text-slate-400 font-medium mt-0.5">Valeurs numériques attendues (ex: 0 à 100, ou 1 à 5).</p>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">
-                  Changement d'Avis (0 ou 1) <span class="text-rose-500">*</span>
-                </label>
-                <select id="map-change" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
-                  <option value="">-- Choisir une colonne --</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">
-                  Confiance Finale <span class="text-rose-500">*</span>
-                </label>
-                <select id="map-final-conf" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
-                  <option value="">-- Choisir une colonne --</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">
-                  Réussite Finale (Optionnel)
-                </label>
-                <select id="map-final-correct" class="map-dropdown w-full px-3 py-2 text-xs bg-slate-50 text-slate-800 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 transition font-medium">
-                  <option value="">-- Déduire automatiquement du changement d'avis --</option>
-                </select>
-                <p class="text-[10px] text-slate-400 font-medium mt-0.5">Si vide, déduit automatiquement à l'aide du changement d'avis.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Preview & Action Right Column -->
-          <div class="lg:col-span-7 flex flex-col justify-between">
-            <div>
-              <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5">
-                <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i>
-                Aperçu de la conversion (3 premières lignes) :
-              </h3>
-
-              <div class="overflow-x-auto border border-slate-200 rounded-lg mb-4 bg-slate-50">
-                <table class="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr class="bg-slate-100 text-slate-700 border-b border-slate-200 font-black uppercase tracking-wider text-[10px]">
-                      <th class="p-2.5">ID</th>
-                      <th class="p-2.5">Correct Initial</th>
-                      <th class="p-2.5">Conf. Initiale</th>
-                      <th class="p-2.5">Changement</th>
-                      <th class="p-2.5">Conf. Finale</th>
-                      <th class="p-2.5">Correct Final</th>
-                    </tr>
-                  </thead>
-                  <tbody id="mapper-preview-rows" class="divide-y divide-slate-200">
-                    <!-- Dynamic preview rows -->
-                    <tr>
-                      <td colSpan="6" class="p-6 text-center text-slate-400 font-medium">
-                        Veuillez lier au moins les champs requis (*) pour générer un aperçu.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 space-y-1">
-                <p class="font-bold text-slate-700 flex items-center gap-1.5">
-                  <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-indigo-600"></i>
-                  Règles de conversion automatique :
-                </p>
-                <ul class="list-disc pl-4 space-y-0.5 text-[11px] text-slate-500 font-medium">
-                  <li>Les confiances sont ramenées aux échelles détectées (ex: 0 à 100%, ou 1 à 5).</li>
-                  <li>Le changement d'avis est considéré vrai si la cellule contient un chiffre différent de 0, "true", "oui", "change", ou "vrai".</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
-              <button
-                id="btn-apply-mapping"
-                type="button"
-                class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-extrabold text-xs uppercase tracking-wider rounded transition shadow-sm hover:shadow flex items-center gap-2 cursor-pointer"
-              >
-                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
-                Lancer l'Analyse Métacognitive
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </section>
 
       <!-- ACTIVE SOURCE TITLE BAR -->
       <section id="active-source-bar" class="hidden mb-8 p-4 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -867,14 +722,6 @@
           }
         });
 
-        // Mapping selectors onchange
-        document.querySelectorAll(".map-dropdown").forEach(dropdown => {
-          dropdown.addEventListener("change", updateMappingPreview);
-        });
-
-        // Launch analysis button
-        document.getElementById("btn-apply-mapping").addEventListener("click", runAnalysisWithMapping);
-
         // Changer de source button
         document.getElementById("btn-clear-data").addEventListener("click", clearLoadedData);
       }
@@ -1086,7 +933,7 @@
       }
 
       // ==========================================
-      // DATA MAPPING PREPARATION
+      // DATA AUTO-MAPPING PREPARATION & NORMALIZATION
       // ==========================================
       function handleDataLoaded(headers, rows, sourceName) {
         appState.rawHeaders = headers;
@@ -1097,54 +944,11 @@
         const guess = guessColumnMapping(headers);
         appState.columnMapping = guess;
 
-        // Display configuration card
-        document.getElementById("mapper-source-name").textContent = sourceName;
-        document.getElementById("mapper-section").classList.remove("hidden");
-        
-        // Populate dropdown selectors
-        populateDropdown("map-id", headers, guess.idCol);
-        populateDropdown("map-correct", headers, guess.correctCol);
-        populateDropdown("map-init-conf", headers, guess.initialConfidenceCol);
-        populateDropdown("map-change", headers, guess.changeOfMindCol);
-        populateDropdown("map-final-conf", headers, guess.finalConfidenceCol);
-        populateDropdown("map-final-correct", headers, guess.finalCorrectCol, true);
+        // Automatically map rows and run the analysis instantly without mapping step!
+        const trials = mapRawDataToTrialData(headers, rows, guess);
+        loadNormalizedDataset(trials, sourceName);
 
-        // Update active preview rows
-        updateMappingPreview();
-        
-        // Hide dashboard while configuring
-        document.getElementById("active-source-bar").classList.add("hidden");
-        document.getElementById("dashboard-section").classList.add("hidden");
-
-        // Scroll to mapping
-        document.getElementById("mapper-section").scrollIntoView({ behavior: "smooth" });
-      }
-
-      function populateDropdown(dropdownId, headers, selectedValue, isOptional = false) {
-        const select = document.getElementById(dropdownId);
-        select.innerHTML = "";
-
-        if (isOptional) {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "-- Déduire automatiquement du changement d'avis --";
-          select.appendChild(opt);
-        } else {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "-- Choisir une colonne --";
-          select.appendChild(opt);
-        }
-
-        headers.forEach(h => {
-          const opt = document.createElement("option");
-          opt.value = h;
-          opt.textContent = h;
-          if (h === selectedValue) {
-            opt.selected = true;
-          }
-          select.appendChild(opt);
-        });
+        showBanner("success", "Synchronisation Réussie !", `${trials.length} essais importés et analysés en direct.`);
       }
 
       function guessColumnMapping(headers) {
@@ -1181,78 +985,6 @@
         if (changeOfMindCol === finalConfidenceCol) finalConfidenceCol = headers[4] || "";
 
         return { idCol, correctCol, initialConfidenceCol, changeOfMindCol, finalConfidenceCol, finalCorrectCol };
-      }
-
-      // Live conversion preview
-      function updateMappingPreview() {
-        const mapping = {
-          idCol: document.getElementById("map-id").value,
-          correctCol: document.getElementById("map-correct").value,
-          initialConfidenceCol: document.getElementById("map-init-conf").value,
-          changeOfMindCol: document.getElementById("map-change").value,
-          finalConfidenceCol: document.getElementById("map-final-conf").value,
-          finalCorrectCol: document.getElementById("map-final-correct").value
-        };
-
-        // Update appState configuration reference
-        appState.columnMapping = mapping;
-
-        const container = document.getElementById("mapper-preview-rows");
-        container.innerHTML = "";
-
-        // If vital mappings missing, show placeholder
-        if (!mapping.idCol || !mapping.correctCol || !mapping.initialConfidenceCol || !mapping.changeOfMindCol || !mapping.finalConfidenceCol) {
-          container.innerHTML = `
-            <tr>
-              <td colSpan="6" class="p-6 text-center text-slate-400 font-medium">
-                Veuillez lier au moins les champs requis (*) pour générer un aperçu.
-              </td>
-            </tr>
-          `;
-          return;
-        }
-
-        // Map first 3 rows to preview
-        const first3 = appState.rawRows.slice(0, 3);
-        const mapped = mapRawDataToTrialData(appState.rawHeaders, first3, mapping);
-
-        if (mapped.length === 0) {
-          container.innerHTML = `
-            <tr>
-              <td colSpan="6" class="p-6 text-center text-slate-400 font-medium">
-                Erreur de données lors de la conversion de l'aperçu.
-              </td>
-            </tr>
-          `;
-          return;
-        }
-
-        mapped.forEach(d => {
-          const tr = document.createElement("tr");
-          tr.className = "hover:bg-slate-100/40 text-slate-800 font-semibold";
-          
-          tr.innerHTML = `
-            <td class="p-2.5 font-bold font-mono text-indigo-650">${d.id}</td>
-            <td class="p-2.5">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${d.correct ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}">
-                ${d.correct ? "OUI" : "NON"}
-              </span>
-            </td>
-            <td class="p-2.5 font-bold font-mono">${d.initialConfidence}</td>
-            <td class="p-2.5">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${d.changeOfMind ? "bg-amber-50 text-amber-700 border border-amber-100" : "bg-slate-100 text-slate-700"}">
-                ${d.changeOfMind ? "CHANGÉ" : "NON"}
-              </span>
-            </td>
-            <td class="p-2.5 font-bold font-mono">${d.finalConfidence}</td>
-            <td class="p-2.5">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${d.finalCorrect ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}">
-                ${d.finalCorrect ? "OUI" : "NON"}
-              </span>
-            </td>
-          `;
-          container.appendChild(tr);
-        });
       }
 
       function mapRawDataToTrialData(headers, rows, mapping) {
@@ -1372,7 +1104,6 @@
           loadNormalizedDataset(DEMO_DATA_2, "Perception Visuelle (Démo 1-5)");
           showBanner("success", "Données de Démo Chargées", "Analyse en cours sur le profil cognitif 'Perception Visuelle' (échelle de 1 à 5).");
         }
-        document.getElementById("mapper-section").classList.add("hidden");
       }
 
       function clearLoadedData() {
@@ -1381,7 +1112,6 @@
         appState.activeData = null;
         appState.activeMetrics = null;
 
-        document.getElementById("mapper-section").classList.add("hidden");
         document.getElementById("active-source-bar").classList.add("hidden");
         document.getElementById("dashboard-section").classList.add("hidden");
         hideBanner();
